@@ -2515,8 +2515,8 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 		return dispose;
 	});
 
-	// Left sidebar panel launcher: positioned after the memory system (default order 100).
-	// Default-visible on install (no pin needed to discover), opens the Antigravity console in main.
+	// Left sidebar panel launcher: order 20 keeps the entry directly below DSH's 自动化任务 panel (order 10)
+	// and above the 更多 / More launcher, which the sidebar always renders after the last panel row; keep it a plain number so DSH's ascending sort controls placement.
 	const AgySidebarIcon = (ownerProps?: unknown): unknown => {
 		const size = (ownerProps && typeof (ownerProps as { size?: number }).size === 'number')
 			? (ownerProps as { size: number }).size
@@ -2529,7 +2529,7 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 			{
 				name: 'sidebar.panellist',
 				id: 'agy-link',
-				order: 100,
+				order: 20,
 				label: () => locale.bind(NS)('section.label'),
 				locale: NS,
 			},

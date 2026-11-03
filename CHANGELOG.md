@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.102 (2026-11-03)
+
+### English
+
+- **Feat(client): place left sidebar entry directly below 自动化任务 and above 更多.**
+  - The `sidebar.panellist` registration order is updated from `100` to `20`. In DSH (`@deepseek-ai/dsh-client-ui-sidebar`), built-in panels are sorted ascending (`order: 0` for Plugins, `order: 10` for 自动化任务 / Schedule task manager), and the "更多" (More) launcher is rendered after all registered panel rows. Order `20` ensures the Antigravity launcher defaults directly below 自动化任务 and above 更多 on fresh installs, leaving headroom for built-in spacing.
+
+### 中文
+
+- **优化(client)：将左侧菜单栏插件入口默认置于“自动化任务”下方、“更多”上方。**
+  - 将 `sidebar.panellist` 注册项的 `order` 从 `100` 调整为 `20`。在 DSH 侧边栏（`@deepseek-ai/dsh-client-ui-sidebar`）中，内置面板按 `order` 升序排序（“插件”为 0，“自动化任务”为 10），“更多”入口则始终在所有面板行之后渲染。设置为 `20` 确保新安装插件时，入口默认紧随“自动化任务”之后并在“更多”之上，同时保留标准的 10 步长间距。
+
+**Full Changelog**: https://github.com/amlyczz/dsh-agy-link/compare/v0.4.101...v0.4.102
+
 ## 0.4.101 (2026-11-03)
 
 ### English

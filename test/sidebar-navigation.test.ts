@@ -62,13 +62,14 @@ test('sidebar contracts: registers sidebar.panellist and main, with NO settings.
   assert.equal(injectedSlots.includes('settings.section'), false, 'settings.section slot must NOT be injected')
   assert.equal(registeredSlots.some(s => s.name === 'settings.section'), false, 'settings.section must NOT be registered')
 
-  // 2. sidebar.panellist MUST be registered after memory system (order 100 > 31)
+  // 2. sidebar.panellist MUST be registered directly below 自动化任务 and above 更多 (order 20)
   const sidebarSlot = registeredSlots.find(s => s.name === 'sidebar.panellist')
   assert.ok(sidebarSlot, 'sidebar.panellist slot must be registered')
   assert.equal(sidebarSlot.options.id, 'agy-link', 'sidebar entry id must be "agy-link"')
   assert.equal(typeof sidebarSlot.options.order, 'number')
-  assert.ok((sidebarSlot.options.order as number) > 31, 'sidebar panel order must be placed after memory system (order > 31)')
-  assert.equal(sidebarSlot.options.order, 100, 'order follows DSH high default panel convention (100)')
+  assert.ok((sidebarSlot.options.order as number) > 10, 'sidebar panel order must be placed below 自动化任务 (order > 10)')
+  assert.ok((sidebarSlot.options.order as number) < 100, 'sidebar panel order must be less than 100')
+  assert.equal(sidebarSlot.options.order, 20, 'order 20 places entry directly below 自动化任务 and above 更多')
   assert.equal(sidebarSlot.options.locale, 'agy-link')
 
   const labelFn = sidebarSlot.options.label as () => string
