@@ -526,6 +526,37 @@ async function handle(deps: CommandDeps, raw: string, invocation?: CommandInvoca
   }
 }
 
+/**
+ * Two independent switches decide whether a caller-driven route (Fusion's
+ * Worker) can actually use the tools it advertises, and either one alone
+ * degrades silently:
+ *
+ *  - `mcpBridge` lets agy EXECUTE DSH tools. Off: agy has no MCP server to
+ *    call, so every advertised tool is unreachable.
+ *  - `agy_tool` in the caller's tool ceiling (Fusion's `workerTools`) is the
+ *    RETURN channel. Missing: this adapter has no tool-call block it may emit,
+ *    so it stops cutting spans on tool steps and the turn ends as prose.
+ *  - `permissionMode: 'skip'` is what lets an MCP call through at all. agy
+ *    auto-denies an MCP tool in print mode under any other mode ("a tool
+ *    required the mcp permission that headless mode cannot prompt for").
+ *
+ * Report the state of all three so `/agy status` names the broken switch
+ * instead of leaving it to be discovered from an empty tool log.
+ */
+function mcpBridgeLines(cfg: { mcpBridge: boolean; permissionMode: string; mcpToolAllowlist: string }): string[] {
+  const allow = cfg.mcpToolAllowlist.trim()
+  const lines = [
+    '- mcp bridge: ' + (cfg.mcpBridge ? 'on — DSH tools are callable by agy' : 'off — agy cannot call any DSH tool, so a caller-driven route sees its tools as unreachable (WORKER_TOOLS_UNREACHABLE)'),
+  ]
+  if (cfg.mcpBridge) {
+    lines.push('- bridged tools: ' + (allow === '' ? 'all non-internal tools' : allow))
+    if (cfg.permissionMode !== 'skip') {
+      lines.push('- Note: agy auto-denies MCP tool calls in print mode unless it may auto-approve them; set `permissionMode: skip` (or an allow-rule under `permissions.allow`) or every bridged call is refused.')
+    }
+  }
+  return lines
+}
+
 async function renderStatus(deps: CommandDeps): Promise<string> {
   const cfg = deps.cfg()
   const bin = deps.bin()
@@ -554,6 +585,7 @@ async function renderStatus(deps: CommandDeps): Promise<string> {
     '- version: ' + (deps.version() ?? 'unknown'),
     '- auth: ' + (auth ? auth.phase + (auth.message ? ' — ' + auth.message : '') : 'unknown'),
     '- permission mode: ' + cfg.permissionMode + (cfg.permissionMode === 'skip' ? ' — WARNING: agy runs tools without approval' : ''),
+    ...mcpBridgeLines(cfg),
     '- workspace: ' + (cfg.workspaceRoot !== '' ? cfg.workspaceRoot : '(session cwd / process cwd)'),
     '- default model: ' + (cfg.defaultModel === '' ? '(agy default)' : cfg.defaultModel),
     '- default effort: ' + (cfg.defaultEffort === '' ? '(model default)' : cfg.defaultEffort),

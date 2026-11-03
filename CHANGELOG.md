@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.101 (2026-11-03)
+
+### English
+
+- **Fix(host): let a caller-driven route actually reach agy's tools — MCP bridge on by default, and the silent degradation is now reported.** (Fusion-as-Sidekick: `WORKER_TOOLS_UNREACHABLE`)
+  - A route that advertises its own tool table (Fusion's Worker, any host tool loop) expects the model to CALL those tools, but `agy` dispatches every bridged tool through its MCP client. With `mcpBridge` defaulting to `false`, every advertised tool was reachable in name only: the Worker request header listed `fusion_submit_result` while agy could never emit it, and the host correctly diagnosed `WORKER_TOOLS_UNREACHABLE`. The bridge is now **on by default** (`mcpBridge: false` / `DSH_AGY_MCP_BRIDGE=0` still opts out).
+  - The second half of the contract is the caller's tool ceiling: this adapter can only emit a tool-call block named `agy_tool` (native mirror) or `run_code` (Code Mode wrapper). When the ceiling contains neither, tool support is correctly dropped — but silently, so a whole task could run with zero tool calls and no explanation. It now logs one actionable `no-tool-transport` warning per session naming the caller-side switch (`workerTools`) rather than inventing a tool the host never registered.
+  - Documented and surfaced the third requirement, which no config flag implies: `agy` auto-denies an MCP call in print mode unless it may auto-approve it, so `permissionMode` must be `skip` (verified against `agy` 1.4.12 — `accept-edits`, `auto` and `plan` all abort the turn with `a tool required the "mcp" permission that headless mode cannot prompt for`). `/agy status` now reports the bridge state, the bridged tool set, and that requirement when the mode would deny every bridged call. See `docs/MCP-BRIDGE-SETUP.md` §1.1.
+
+### 中文
+
+- **修复(host)：由调用方驱动工具表的路线现在真能用到 agy 的工具——MCP 桥接默认开启，且静默降级会被报出来。**（Fusion 作为 Sidekick 时的 `WORKER_TOOLS_UNREACHABLE`）
+  - 自己公布工具表的路线（Fusion 的 Worker、任何宿主工具循环）期望模型**调用**这些工具，但 agy 的所有桥接调用都走它的 MCP 客户端。`mcpBridge` 之前默认 `false`，于是公布的工具只剩下名字：Worker 请求头里列着 `fusion_submit_result`，agy 却永远发不出来，宿主判定 `WORKER_TOOLS_UNREACHABLE` 完全正确。现桥接**默认开启**（`mcpBridge: false` / `DSH_AGY_MCP_BRIDGE=0` 仍可关闭）。
+  - 契约的另一半在调用方的工具天花板：本适配器只能以 `agy_tool`（原生镜像）或 `run_code`（Code Mode 包装）之名发出 tool-call 块。两者都不在时，放弃工具支持是**对的**，但此前是**静默**的——整个任务零工具调用却没有任何解释。现在每个会话记一条可执行的 `no-tool-transport` 警告，指明要改的是调用方（`workerTools`），而不是伪造一个宿主从未注册的工具。
+  - 补上并文档化了没有任何配置项能隐含的第三个条件：agy 在 print 模式下会把 MCP 调用自动拒绝，除非允许自动批准，因此 `permissionMode` 必须是 `skip`（已对 `agy` 1.4.12 实测：`accept-edits`、`auto`、`plan` 均以 `a tool required the "mcp" permission that headless mode cannot prompt for` 中止回合）。`/agy status` 现在会显示桥接状态、桥接工具集，以及当前模式会拒绝所有桥接调用时的提示。详见 `docs/MCP-BRIDGE-SETUP.md` §1.1。
+
+**Full Changelog**: https://github.com/amlyczz/dsh-agy-link/compare/v0.4.100...v0.4.101
+
 ## 0.4.100 (2026-11-02)
 
 ### English

@@ -103,7 +103,21 @@ export interface PluginConfig {
   mediaMaxBytes: number
   /** Max images staged per model call. */
   mediaMaxImages: number
-  /** Experimental: expose DSH tools to agy over a local MCP bridge. */
+  /**
+   * Expose DSH tools to agy over a local loopback MCP bridge.
+   *
+   * On by default: a caller-driven route (Fusion's Worker, any host tool loop)
+   * advertises its tools in the request and expects the model to call them. agy
+   * dispatches every bridged tool through its MCP client, so without the bridge
+   * those tools are advertised but unreachable — the request advertises
+   * `fusion_submit_result` while agy can never emit it (WORKER_TOOLS_UNREACHABLE).
+   *
+   * Being reachable is still not sufficient on its own: agy auto-denies an MCP
+   * call in print mode unless it may auto-approve it, so `permissionMode` must
+   * be `'skip'` (verified against agy 1.4.12 — `accept-edits` / `auto` / `plan`
+   * all abort the turn with "a tool required the mcp permission"). Set
+   * `mcpBridge: false` to opt out of exposing DSH tools at all.
+   */
   mcpBridge: boolean
   /** Where the bridge publishes its MCP entry. `agy` 1.4+ only reads the global registry. */
   mcpConfigScope: 'global' | 'workspace' | 'both'
@@ -224,7 +238,7 @@ export function defaultConfig(): PluginConfig {
     mediaTtlMs: 86_400_000,
     mediaMaxBytes: 10 * 1024 * 1024,
     mediaMaxImages: 8,
-    mcpBridge: false,
+    mcpBridge: true,
     mcpConfigScope: 'global',
     mcpConfigPath: '',
     mcpToolAllowlist: '',

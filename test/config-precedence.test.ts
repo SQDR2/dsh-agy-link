@@ -22,7 +22,7 @@ test('boolean env vars are case-insensitive and accept yes/on/off', () => {
   assert.equal(resolveConfig({}, { DSH_AGY_MCP_BRIDGE: 'on' }, {}).mcpBridge, true)
   assert.equal(resolveConfig({}, { DSH_AGY_MCP_BRIDGE: 'OFF' }, {}).mcpBridge, false)
   assert.equal(resolveConfig({}, { DSH_AGY_MCP_BRIDGE: 'No' }, {}).mcpBridge, false)
-  assert.equal(resolveConfig({}, { DSH_AGY_MCP_BRIDGE: 'garbage' }, {}).mcpBridge, false, 'unknown falls back to base default')
+  assert.equal(resolveConfig({}, { DSH_AGY_MCP_BRIDGE: 'garbage' }, {}).mcpBridge, true, 'unknown falls back to base default (on since the bridge default flipped)')
 })
 
 test('longToolIdleMinutes is configurable, accepts 0 (disable) and reads the env override', () => {
@@ -44,4 +44,17 @@ test('hiddenModels accepts string arrays, drops junk, and env wins as a comma li
   // Env wins last, comma-separated.
   const fromEnv = resolveConfig({ hiddenModels: ['entry-model'] }, { DSH_AGY_HIDDEN_MODELS: ' env-model , second, ,' }, {})
   assert.deepEqual(fromEnv.hiddenModels, ['env-model', 'second'])
+})
+
+// A caller-driven route (Fusion's Worker) advertises its tools and expects the
+// model to call them; agy dispatches every one of those through its MCP client.
+// With the bridge off those tools are advertised but unreachable, which the
+// host reports as WORKER_TOOLS_UNREACHABLE — an empty tool log with no hint
+// that one config switch explains it. Default it on, keep the opt-out.
+test('the MCP bridge is enabled by default and can still be turned off explicitly', () => {
+  assert.equal(resolveConfig({}, {}, {}).mcpBridge, true, 'default is on')
+  assert.equal(resolveConfig({ mcpBridge: false }, {}, {}).mcpBridge, false, 'entry config opts out')
+  assert.equal(resolveConfig({}, {}, { mcpBridge: false }).mcpBridge, false, 'runtime override opts out')
+  assert.equal(resolveConfig({}, { DSH_AGY_MCP_BRIDGE: '0' }, {}).mcpBridge, false, 'env opts out')
+  assert.equal(resolveConfig({ mcpBridge: false }, { DSH_AGY_MCP_BRIDGE: '1' }, {}).mcpBridge, true, 'env wins last')
 })

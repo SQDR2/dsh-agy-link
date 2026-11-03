@@ -1516,6 +1516,51 @@ test('adapts tool dispatch to Native Mode (agy_tool) vs Code Mode (run_code)', a
   assert.equal((nativeBlocks[0] as unknown as { block: { name: string } }).block.name, 'agy_tool')
 })
 
+test('a route that advertises tools but withholds both transports logs one actionable warning and stops on prose', async () => {
+  // The Fusion Worker failure shape (session-16660dfd / fusion-worker-0f88c744):
+  // the request advertises real tools, but neither `agy_tool` (native mirror)
+  // nor `run_code` (Code Mode wrapper) is in the ceiling, so this adapter has no
+  // tool-call block it may emit. Emitting `agy_tool` anyway is not an option —
+  // the host never registered it and would answer `unknown tool "agy_tool"`.
+  // The degradation is correct; staying SILENT about it was the bug.
+  const warnings: string[] = []
+  const { adapter } = makeAdapter({}, { log: (m) => warnings.push(m) })
+  process.env.FAKE_AGY_MODE = 'tool'
+  process.env.FAKE_AGY_ARGS_FILE = join(workDir, 'args-no-transport.json')
+  const workerTools = ['bash', 'edit', 'fusion_submit_result', 'fusion_read_evidence', 'fusion_read_state',
+    'glob', 'grep', 'job_kill', 'job_output', 'read', 'write']
+  const chunks = await collect(adapter.stream(opts([msg('user', 'do the work')], {
+    sessionId: 'sess-no-transport' as never,
+    tools: workerTools.map((name) => ({ name, description: name, parameters: {} })) as never,
+  })))
+
+  // The agy tool step must NOT become a tool-call block: the host has no such tool.
+  const toolBlocks = chunks.filter(
+    (c) => (c.type === 'block-end' && (c as { block?: { type?: string } }).block?.type === 'tool-call'),
+  )
+  assert.equal(toolBlocks.length, 0, 'no tool-call block is emitted for a tool the host never registered')
+  const finish = chunks[chunks.length - 1] as { type: string; reason: { kind: string } }
+  assert.equal(finish.reason.kind, 'stop')
+
+  const warning = warnings.find((w) => w.includes('no-tool-transport') || w.includes('agy_tool'))
+  assert.ok(warning, 'the silent degradation is reported: ' + JSON.stringify(warnings))
+  assert.match(warning, /neither `agy_tool` nor `run_code`/)
+  assert.match(warning, /workerTools/, 'the fix names the caller-side switch, not this adapter')
+  assert.match(warning, /mcpBridge/, 'and keeps the execution half of the contract visible')
+})
+
+test('an ordinary request with agy_tool is never warned about missing transports', async () => {
+  const warnings: string[] = []
+  const { adapter } = makeAdapter({}, { log: (m) => warnings.push(m) })
+  process.env.FAKE_AGY_MODE = 'ok'
+  process.env.FAKE_AGY_ARGS_FILE = join(workDir, 'args-with-transport.json')
+  await collect(adapter.stream(opts([msg('user', 'hi')], {
+    sessionId: 'sess-with-transport' as never,
+    tools: [{ name: 'agy_tool', description: 'mirror', parameters: {} }] as never,
+  })))
+  assert.deepEqual(warnings.filter((w) => w.includes('no-tool-transport')), [])
+})
+
 test('multimodal: stages attached images and forwards path with view_file instructions', async () => {
   const pngData = Buffer.from('89504e470d0a1a0a', 'hex')
   const { adapter } = makeAdapter({}, {

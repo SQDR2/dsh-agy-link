@@ -14,6 +14,11 @@ import { apply } from '../src/index.ts'
 // CI machines without agy installed.
 const workDir = mkdtempSync(join(tmpdir(), 'agy-inject-'))
 process.env.DSH_HOME = workDir
+// `mcpBridge` is on by default, so loading the plugin here also publishes an
+// MCP registry entry. Point the agy home at the sandbox too, otherwise the
+// registry written is the developer's real ~/.gemini/config/mcp_config.json and
+// a test run leaks a loopback entry (or at least its mkdir) into it.
+process.env.GEMINI_CLI_HOME = join(workDir, '.gemini')
 const stubBin = join(workDir, 'agy')
 writeFileSync(stubBin, '#!/bin/sh\necho "agy version 1.1.15"\n')
 chmodSync(stubBin, 0o755)

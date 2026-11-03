@@ -179,3 +179,32 @@ test('agy session commands inspect and drop conversation bindings', async () => 
   assert.equal(storeData['session-xyz'], undefined)
 })
 
+
+// A caller-driven route (Fusion Worker) needs BOTH switches, and the bridge
+// alone is not enough: agy auto-denies an MCP call in print mode under any
+// mode but `skip`. `/agy status` must name the broken switch, because the
+// failure mode is otherwise an empty tool log (WORKER_TOOLS_UNREACHABLE).
+test('/agy status reports the MCP bridge state and the permission mode it requires', async () => {
+  const def = agyCommandDefinition({ ...baseDeps, lastRun: () => undefined, cfg: () => ({ ...defaultConfig(), mcpBridge: true, permissionMode: 'plan' }) } as never)
+  const on = await def.handler({ rawInput: 'status' } as never) as { text: string }
+  assert.match(on.text, /mcp bridge: on/)
+  assert.match(on.text, /all non-internal tools/, 'an empty allowlist bridges every non-internal tool')
+  assert.match(on.text, /permissionMode: skip/, 'a non-skip mode would auto-deny every bridged call')
+
+
+  const disabled = agyCommandDefinition({ ...baseDeps, lastRun: () => undefined, cfg: () => ({ ...defaultConfig(), mcpBridge: false }) } as never)
+  const disabledRes = await disabled.handler({ rawInput: 'status' } as never) as { text: string }
+  assert.match(disabledRes.text, /mcp bridge: off/)
+  assert.match(disabledRes.text, /WORKER_TOOLS_UNREACHABLE/, 'the consequence of an unreachable tool table is named')
+})
+
+test('an allowlisted bridge reports exactly the tools it exposes', async () => {
+  const def = agyCommandDefinition({
+    ...baseDeps,
+    lastRun: () => undefined,
+    cfg: () => ({ ...defaultConfig(), mcpBridge: true, permissionMode: 'skip', mcpToolAllowlist: 'fusion_submit_result,bash' }),
+  } as never)
+  const res = await def.handler({ rawInput: 'status' } as never) as { text: string }
+  assert.match(res.text, /bridged tools: fusion_submit_result,bash/)
+  assert.ok(!res.text.includes('set `permissionMode: skip`'), 'no guidance is repeated once the mode already allows bridging')
+})

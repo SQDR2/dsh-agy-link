@@ -105,7 +105,8 @@ reference-counted slot is the strongest isolation the plugin can provide.
   path in the prompt, granting `--add-dir` so agy can view them with its own
   file/vision tools. Same approach as the pi extension.
 - **DSH tools to agy (reverse MCP bridge)** - available since v0.2 behind the
-  `mcpBridge` config flag (experimental): the plugin runs a loopback-only,
+  `mcpBridge` config flag, **on by default since v0.4.101** (`mcpBridge: false`
+  or `DSH_AGY_MCP_BRIDGE=0` opts out): the plugin runs a loopback-only,
   token-guarded HTTP endpoint and registers a zero-dependency stdio MCP
   server in the MCP registry (`~/.gemini/config/mcp_config.json` by default,
   where `agy` 1.4+ actually reads it, merged in and restored on disable).

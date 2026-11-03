@@ -36,7 +36,7 @@ Worker 必须能调用 Fusion 的委派工具（`fusion_submit_result` 等），
 
 | 键 | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `mcpBridge` | boolean | `false` | 总开关 |
+| `mcpBridge` | boolean | `true` | 总开关（v0.4.101 起默认开启；`false` 可关闭） |
 | `mcpToolAllowlist` | string | `''` | 逗号分隔；**空 = 全部放行**（内部工具除外） |
 | `mcpConfigScope` | `'global' \| 'workspace' \| 'both'` | `'global'` | 写哪个 MCP 注册表 |
 | `mcpConfigPath` | string | `''` | 覆盖注册表文件绝对路径 |
@@ -47,6 +47,46 @@ Worker 必须能调用 Fusion 的委派工具（`fusion_submit_result` 等），
 **`mcpConfigScope` 保持默认 `global`。** `agy` 1.4+ 只读全局注册表
 （`<agy home>/.gemini/config/mcp_config.json`），workspace 的 `.mcp.json`
 会被静默忽略——写成 `workspace` 是「配了但不起作用」的常见原因。
+
+### 1.1 桥接只是三个条件中的一个
+
+一个「由调用方驱动」的路线（Fusion 的 Worker、任何宿主工具循环）要在 agy 上
+真正跑通工具，需要**三个条件同时成立**，任缺一个都表现为「工具表里有，
+但永远没有调用」：
+
+| 条件 | 作用 | 缺失时的现象 |
+|---|---|---|
+| `mcpBridge: true` | agy 能**执行** DSH 工具 | 工具可达但执行不到 |
+| 调用方工具面里有 `agy_tool` | agy 的**回传通道**（本适配器只能以 `agy_tool` / `run_code` 之一发出 tool-call 块） | 适配器拿不到可发的块 → 整轮退化成纯文本，宿主报 `WORKER_TOOLS_UNREACHABLE` |
+| `permissionMode: 'skip'` | 让 MCP 调用**被允许** | `agy` 在 print 模式下自动拒绝：`a tool required the "mcp" permission that headless mode cannot prompt for` |
+
+第三条容易漏：`accept-edits`、`auto`、`plan` 在 headless 下都**不能**把 MCP
+调用放行（已对 `agy` 1.4.12 实测）。要么用 `permissionMode: skip`，要么在
+`settings.json` 的 `permissions.allow` 里加一条 `mcp(<target>)` 规则。
+
+Fusion 一侧还要把 `agy_tool` 放进 Worker 的工具天花板，否则它会被
+`scope.tools.restrict({ allow })` 裁掉：
+
+```yaml
+- id: dsh-model-fusion
+  config:
+    workerTools:
+      - bash
+      - read
+      - write
+      - edit
+      - glob
+      - grep
+      - job_output
+      - job_kill
+      - agy_tool        # ← 回传通道，缺了就只有纯文本
+```
+
+> 适配器不会伪造这个工具：宿主没注册 `agy_tool` 时硬发会被拒为
+> `unknown tool "agy_tool"`。所以它选择停止按工具切分 span，但会在
+> 日志里留一条 `no-tool-transport` 警告指出要改的是**调用方天花板**而不是适配器
+> （v0.4.101 起）。`/agy status` 也会同时列出桥接开关、放行清单与
+> `permissionMode` 提示。
 
 ---
 
@@ -150,3 +190,6 @@ svc.schemas(caller)
 | 配了但 agy 完全看不到服务器 | `mcpConfigScope` 写成了 `workspace`（agy 1.4+ 只读全局） |
 | `denied: not in allowlist` | 白名单里写的是 MCP 名而非原始 DSH 名 |
 | 注册表条目在 `dispose` 后消失 | 正常：插件会还原它之前的内容 |
+| 工具表里有工具，但整轮零 `tool/call` | 调用方天花板没有 `agy_tool`（见 1.1）；日志里会有 `no-tool-transport` 警告 |
+| `a tool required the "mcp" permission …` | `permissionMode` 不是 `skip`，且在 headless 下无法弹窗授权 |
+| `/agy status` 显示 `mcp bridge: off` | 被显式关掉了（`mcpBridge: false` 或 `DSH_AGY_MCP_BRIDGE=0`）；agy 因此调不到任何 DSH 工具 |

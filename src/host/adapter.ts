@@ -1044,6 +1044,30 @@ export class AgyAdapter extends LlmAdapter {
     const toolNames = new Set((options.tools ?? []).map((t) => t.name))
     const isCodeMode = toolNames.has('run_code') && !toolNames.has('agy_tool')
     const hasToolSupport = options.tools === undefined || toolNames.has('agy_tool') || toolNames.has('run_code')
+    // A host that advertises tools but withholds BOTH transports is a
+    // configuration mismatch, not a model that cannot use tools. Without
+    // `agy_tool` (native mirror) or `run_code` (Code Mode wrapper) this adapter
+    // has no tool-call block it may emit: naming `agy_tool` anyway would be
+    // rejected by the host as `unknown tool "agy_tool"`, and cutting the span
+    // on nothing leaves every tool result unreported. So tool support is
+    // correctly dropped — but silently, which is how a caller-driven route
+    // (Fusion's Worker) advertised `fusion_submit_result` for a whole task
+    // while agy could never emit it, and the host diagnosed the worker as
+    // WORKER_TOOLS_UNREACHABLE with no clue which switch was wrong.
+    //
+    // The fix is never in this adapter (it must not invent a tool the host
+    // never registered) but in the route: allow `agy_tool` through the caller's
+    // tool ceiling. Say so once per session instead of degrading in silence.
+    if (!isAux && options.tools !== undefined && options.tools.length > 0 && !hasToolSupport) {
+      const advertised = [...toolNames].slice(0, 12).join(', ')
+      this.warnOnce(
+        'no-tool-transport',
+        'this request advertises ' + options.tools.length + ' tool(s) (' + advertised + ') but neither `agy_tool` nor `run_code`, '
+        + 'so agy cannot return any tool call and those tools stay unreachable — the turn will answer in prose and the caller will '
+        + 'see no tool activity. Allow `agy_tool` through the calling role\'s tool ceiling (e.g. Fusion\'s `workerTools`) to restore '
+        + 'tool loops, and keep `mcpBridge` on so agy can execute the bridged tools.',
+      )
+    }
     const sessionKey = options.sessionId !== undefined ? String(options.sessionId) : ''
     // cwd precedence: explicit config > the DSH session's own workspace >
     // the host process cwd. The last fallback can land agy in an UNRELATED
