@@ -1,4 +1,4 @@
-// dsh-agy-link client half (browser). Integrated into native DSH settings, sidebar footer, and header.
+// dsh-agy-link client half (browser). Integrated into native DSH left sidebar, main panel, and header.
 import type { Context } from '@deepseek-ai/cordis';
 import type {} from '@deepseek-ai/dsh-client-locale/client';
 import type { AccountPoolData, FamilyQuotaInfo, ManagedAccount, ModelQuotaInfo } from '../common/pool-types.ts';
@@ -2181,13 +2181,26 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 )
 			: null;
 
+		const isModal = Boolean(props?.isModal);
+		const containerStyle = isModal
+			? S.container
+			: {
+				...S.container,
+				height: '100%',
+				overflowY: 'auto' as const,
+				boxSizing: 'border-box' as const,
+				padding: '24px 32px',
+				maxWidth: '920px',
+				margin: '0 auto',
+			};
+
 		if (status === null) {
-			return h('div', { style: { ...S.container, minHeight: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+			return h('div', { style: { ...containerStyle, minHeight: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
 				h('span', { style: S.muted }, [renderSpinner(), t('status.loading')]),
 			);
 		}
 
-		return h('div', { style: S.container },
+		return h('div', { style: containerStyle },
 			h('div', { style: S.headerCard },
 				h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
 					agyIcon(18),
@@ -2502,14 +2515,36 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 		return dispose;
 	});
 
-	// Register in settings section (under Gear icon -> Antigravity)
-	ctx.slots.inject('settings.section', () => {
+	// Left sidebar panel launcher: positioned after the memory system (default order 100).
+	// Default-visible on install (no pin needed to discover), opens the Antigravity console in main.
+	const AgySidebarIcon = (ownerProps?: unknown): unknown => {
+		const size = (ownerProps && typeof (ownerProps as { size?: number }).size === 'number')
+			? (ownerProps as { size: number }).size
+			: 16;
+		return agyIcon(size);
+	};
+
+	ctx.slots.inject('sidebar.panellist', () => {
 		const dispose = ctx.slots.register(
 			{
-				name: 'settings.section',
+				name: 'sidebar.panellist',
 				id: 'agy-link',
-				order: 20,
+				order: 100,
 				label: () => locale.bind(NS)('section.label'),
+				locale: NS,
+			},
+			AgySidebarIcon,
+		);
+		return dispose;
+	});
+
+	// Central main page for Antigravity: reuses the identical full management console (AgySettingsSection),
+	// providing direct access from the left sidebar without going through Settings.
+	ctx.slots.inject('main', () => {
+		const dispose = ctx.slots.register(
+			{
+				name: 'main',
+				key: 'agy-link',
 				locale: NS,
 			},
 			AgySettingsSection,
@@ -2584,6 +2619,4 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 	// Interactive user decision & choice chips (recovered working tree).
 	ctx.effect(() => installDecisionChips());
 
-	// Custom Antigravity brand icon inside Settings dialog nav list
-	ctx.effect(() => installSettingsNavIcon(ctx, () => locale.bind(NS)('section.label')));
 }
