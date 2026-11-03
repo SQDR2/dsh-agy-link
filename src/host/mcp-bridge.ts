@@ -38,7 +38,15 @@ const INTERNAL_TOOL_NAMES = new Set(['run_code', 'agy_ask', 'agy_tool'])
 
 /** Minimal structural view of the DSH tool registry we need. */
 export interface ToolsServiceLike {
-  schemas(): Array<{ name: string; description: string; parameters: Record<string, unknown> }>
+  /**
+   * Visible tool schemas for one scope. `scope` is the viewing agent (its
+   * `ctx` is the registration scope): omitting it yields the GLOBAL view only,
+   * which excludes every tool a plugin registered on an agent's own scope
+   * (e.g. Fusion's `fusion_*`, registered via `agent.ctx.tools.register`).
+   * Passing the resolved calling agent is therefore what makes agent-scoped
+   * tools bridgeable at all.
+   */
+  schemas(scope?: unknown): Array<{ name: string; description: string; parameters: Record<string, unknown> }>
   execute(input: {
     callId: string
     name: string
@@ -126,6 +134,26 @@ export function startMcpBridge(opts: {
 }): Promise<McpBridge> {
   const token = randomBytes(24).toString('hex')
   let callSeq = 0
+  // Resolve the caller once per request for BOTH routes. /tools needs it too:
+  // `schemas()` without a scope returns the global layer only, so a
+  // scope-registered tool (`fusion_*`) would never be listed and could never be
+  // called, no matter how the allowlist is written.
+  //
+  // DSH session keys come in two forms: a top-level web session is
+  // `session-<uuid>`, a sub-agent/fork session is a bare `<uuid>`. The spawning
+  // key is injected automatically, so resolve the value as given first (a bare
+  // sub-agent key must not be rewritten); only when that finds no agent and the
+  // value is not prefixed yet, retry once with `session-`.
+  const callerFor = async (req: { headers: Record<string, unknown> }): Promise<unknown> => {
+    const sessionHeader = String(req.headers['x-dsh-session'] ?? '')
+    if (sessionHeader === '' || opts.resolveAgent === undefined) return undefined
+    const resolve = async (id: string): Promise<unknown> => await Promise.resolve(opts.resolveAgent?.(id))
+    let agent = await resolve(sessionHeader)
+    if (agent === undefined && !sessionHeader.startsWith('session-')) {
+      agent = await resolve('session-' + sessionHeader)
+    }
+    return agent
+  }
   const server: Server = createServer((req, res) => {
     void (async () => {
       const url = (req.url ?? '').split('?')[0]
@@ -143,7 +171,11 @@ export function startMcpBridge(opts: {
         const allow = opts.allowlist().split(',').map((s) => s.trim()).filter(Boolean)
         const allowSet = new Set(allow)
         const used = new Set<string>()
-        const tools = svc.schemas()
+        // Scope the listing to the calling agent: agent-scoped registrations
+        // (Fusion's `fusion_*`) live outside the global layer, so an unscoped
+        // `schemas()` silently serves an empty-of-them catalog.
+        const caller = await callerFor(req)
+        const tools = svc.schemas(caller)
           .filter((t) => allow.length === 0 || allowSet.has(t.name))
           // internal transports / loopback-only helpers are not bridgeable
           .filter((t) => !INTERNAL_TOOL_NAMES.has(t.name))
@@ -217,20 +249,7 @@ export function startMcpBridge(opts: {
           // Carry the caller: the session that spawned agy is the agent on
           // whose behalf this call runs (issue #55). Without it, tools that
           // enforce `exec.agent` reject the call.
-          const sessionHeader = String(req.headers['x-dsh-session'] ?? '')
-          const resolveSession = async (id: string): Promise<unknown> =>
-            id === '' ? undefined : await Promise.resolve(opts.resolveAgent?.(id))
-          // DSH session keys come in two forms: a top-level web session is
-          // `session-<uuid>`, a sub-agent/fork session is a bare `<uuid>`. The
-          // spawning key is injected automatically, so resolve the value as
-          // given first (a bare sub-agent key must not be rewritten); only when
-          // that finds no agent and the value is not prefixed yet, retry once
-          // with `session-` - otherwise such a call runs without a caller and
-          // fails with `agent_teams tools require a calling agent`.
-          let agent = await resolveSession(sessionHeader)
-          if (agent === undefined && sessionHeader !== '' && !sessionHeader.startsWith('session-')) {
-            agent = await resolveSession('session-' + sessionHeader)
-          }
+          const agent = await callerFor(req)
           // Every DSH tool receives `exec.signal`; tools that await inside their
           // body read it, so a call without one throws
           // `Cannot read properties of undefined (reading 'aborted')`.

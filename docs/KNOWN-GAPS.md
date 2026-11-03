@@ -122,10 +122,23 @@ reference-counted slot is the strongest isolation the plugin can provide.
   cannot OOM the host with an unbounded body or probe the token via timing.
   Distinct DSH tool names that normalize to the same MCP name (e.g. `a.b`
   and `a_b`) are disambiguated with a stable suffix instead of being silently
-  dropped, so every real tool stays reachable.
+  dropped, so every real tool stays reachable. The allowlist matches the
+  **original DSH name** (`agent_teams.status`), not the MCP-safe rewrite
+  (`agent_teams_status`); naming the rewritten form silently selects nothing.
+  **The listed set is scoped to the calling agent.** `tools.schemas()` with no
+  argument returns only the global registration layer, so a plugin that
+  registers on the agent's own scope (Fusion's `fusion_*`, via
+  `agent.ctx.tools.register`) was invisible to `/tools` and could never be
+  called — no allowlist value could fix that, because filtering happens after
+  listing. `/tools` now resolves the `X-DSH-Session` caller exactly like
+  `/call` and passes that agent to `schemas(agent)`. The advertised set
+  therefore differs per spawning session; an unresolved caller degrades to the
+  global view rather than failing.
   Every bridged call is audit-logged as `mcp call <tool> [<outcome>] <ms>` with
   the caller class and the failure text (never the arguments), so a failed run
   is visible in journald instead of only in transcripts.
+  Step-by-step setup (including the Fusion-as-Sidekick case) lives in
+  [`MCP-BRIDGE-SETUP.md`](./MCP-BRIDGE-SETUP.md).
 
   **Contract for external / plugin callers of `tools.execute(exec)` (see #61):**
   DSH's `ToolExecutionInput` requires `callId`, `name`, `arguments` **and

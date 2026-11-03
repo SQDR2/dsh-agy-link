@@ -272,3 +272,43 @@ test('DSH send_message can be bridged when it is allowlisted', async () => {
     await bridge.close()
   }
 })
+
+test('/tools lists tools registered on the calling agent scope', async () => {
+  // Regression: Fusion registers its `fusion_*` tools on the agent's own scope
+  // (`agent.ctx.tools.register`), not the global layer. `schemas()` with no
+  // argument returns only the global view, so the bridge used to advertise a
+  // catalog with none of them and no allowlist setting could ever expose one.
+  const scoped = { id: 'agent-42', session: 'session-42' }
+  const schemas = (scope?: unknown) => [
+    { name: 'bash', description: 'global', parameters: { type: 'object', properties: {} } },
+    ...(scope === scoped
+      ? [{ name: 'fusion_delegate', description: 'scoped', parameters: { type: 'object', properties: {} } }]
+      : []),
+  ]
+  const bridge = await startMcpBridge({
+    bridgeScript: BRIDGE_SCRIPT,
+    tools: () => ({ schemas, execute: async () => ({ content: [{ type: 'text', text: 'ok' }] }) }),
+    allowlist: () => '',
+    resolveAgent: (id) => (id === 'session-42' ? scoped : undefined),
+  })
+  try {
+    const list = async (headers: Record<string, string> = {}): Promise<string[]> => {
+      const res = await fetch(bridge.url + '/tools', {
+        headers: { Authorization: 'Bearer ' + bridge.token, ...headers },
+      })
+      const body = (await res.json()) as { tools: Array<{ dshName: string }> }
+      return body.tools.map((t) => t.dshName)
+    }
+    // The spawning session reaches /tools exactly as it reaches /call.
+    assert.deepEqual(await list({ 'X-DSH-Session': 'session-42' }), ['bash', 'fusion_delegate'],
+      'the calling agent scope contributes its own tools')
+    // A bare key resolves through the same `session-` retry /call uses.
+    assert.deepEqual(await list({ 'X-DSH-Session': '42' }), ['bash', 'fusion_delegate'],
+      'a bare sub-agent key resolves through the session- retry')
+    // An unknown caller must degrade to the global view, never to a 500.
+    assert.deepEqual(await list({ 'X-DSH-Session': 'nobody' }), ['bash'],
+      'an unresolved caller still lists the global view rather than failing')
+  } finally {
+    await bridge.close()
+  }
+})
