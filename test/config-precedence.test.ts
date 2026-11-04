@@ -58,3 +58,50 @@ test('the MCP bridge is enabled by default and can still be turned off explicitl
   assert.equal(resolveConfig({}, { DSH_AGY_MCP_BRIDGE: '0' }, {}).mcpBridge, false, 'env opts out')
   assert.equal(resolveConfig({ mcpBridge: false }, { DSH_AGY_MCP_BRIDGE: '1' }, {}).mcpBridge, true, 'env wins last')
 })
+
+test('stateDir adopts a legacy agy-link directory exactly once', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, existsSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const { stateDir, resetStateDirAdoption } = await import('../src/common/config.ts')
+  const home = mkdtempSync(join(tmpdir(), 'agy-worker-state-'))
+  const previous = process.env.DSH_HOME
+  process.env.DSH_HOME = home
+  resetStateDirAdoption()
+  try {
+    mkdirSync(join(home, 'agy-link', 'media'), { recursive: true })
+    writeFileSync(join(home, 'agy-link', 'runtime-overrides.json'), '{"mode":"plan"}')
+    assert.equal(stateDir(), join(home, 'agy-worker'))
+    assert.ok(existsSync(join(home, 'agy-worker', 'runtime-overrides.json')), 'overrides survive the rename')
+    assert.ok(existsSync(join(home, 'agy-worker', 'media')), 'media cache survives the rename')
+    assert.equal(existsSync(join(home, 'agy-link')), false, 'the legacy directory is moved, not copied')
+  } finally {
+    if (previous === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previous
+    resetStateDirAdoption()
+  }
+})
+
+test('stateDir never overwrites an existing agy-worker directory with legacy state', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const { stateDir, resetStateDirAdoption } = await import('../src/common/config.ts')
+  const home = mkdtempSync(join(tmpdir(), 'agy-worker-state-'))
+  const previous = process.env.DSH_HOME
+  process.env.DSH_HOME = home
+  resetStateDirAdoption()
+  try {
+    mkdirSync(join(home, 'agy-link'), { recursive: true })
+    writeFileSync(join(home, 'agy-link', 'runtime-overrides.json'), '{"mode":"plan"}')
+    mkdirSync(join(home, 'agy-worker'), { recursive: true })
+    writeFileSync(join(home, 'agy-worker', 'runtime-overrides.json'), '{"mode":"skip"}')
+    assert.equal(stateDir(), join(home, 'agy-worker'))
+    assert.equal(readFileSync(join(home, 'agy-worker', 'runtime-overrides.json'), 'utf8'), '{"mode":"skip"}', 'live state wins')
+    assert.ok(existsSync(join(home, 'agy-link')), 'the legacy directory is left untouched')
+  } finally {
+    if (previous === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previous
+    resetStateDirAdoption()
+  }
+})

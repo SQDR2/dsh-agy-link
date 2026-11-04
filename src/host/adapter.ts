@@ -480,7 +480,7 @@ export interface AgyAdapterDeps {
   readImage?: (ref: ImageRefLike) => Promise<Uint8Array | null>
   /** Called with each run's parser so the host can keep the last stdout ring for /agy doctor. */
   onParser?: (parser: StreamJsonParser) => void
-  /** Base URL of the media route, e.g. http://127.0.0.1:PORT/plugins/agy-link/media */
+  /** Base URL of the media route, e.g. http://127.0.0.1:PORT/plugins/agy-worker/media */
   getMediaBaseUrl?: () => string | null
   /** Synchronizes active model selection back to DSH input box / session */
   syncSessionModel?: (sessionId: string, model: string, effort?: string) => void

@@ -78,17 +78,17 @@ test('native-contract locale lifecycle registers, publishes switches, falls back
   // conversation.session.header.actions + sidebar.panellist + main + plugins.bundle.config
   // + plugins.row.config + agy_tool + run_code toolviews
   assert.equal(registeredSlots.length, 7)
-  assert.equal(registeredSlots[0]!.options.locale, 'agy-link')
-  assert.equal(registeredSlots[1]!.options.id, 'agy-link')
-  assert.equal(registeredSlots[2]!.options.key, 'agy-link')
-  assert.equal(registeredSlots[3]!.options.key, 'dsh-agy-link')
-  assert.equal(registeredSlots[4]!.options.key, 'dsh-agy-link#agy-link')
+  assert.equal(registeredSlots[0]!.options.locale, 'agy-worker')
+  assert.equal(registeredSlots[1]!.options.id, 'agy-worker')
+  assert.equal(registeredSlots[2]!.options.key, 'agy-worker')
+  assert.equal(registeredSlots[3]!.options.key, 'dsh-agy-worker')
+  assert.equal(registeredSlots[4]!.options.key, 'dsh-agy-worker#agy-worker')
   assert.equal(registeredSlots[5]!.options.id, 'agy-tool-view')
   assert.equal(registeredSlots[6]!.options.id, 'agy-run-code-view')
-  const t = locale.bind('agy-link')
+  const t = locale.bind('agy-worker')
   locale.setLocale('pt-BR'); assert.equal(t('account.add'), 'Adicionar conta Google')
   locale.setLocale('es'); assert.equal(t('account.add'), 'Añadir cuenta de Google')
-  delete dictionaries.get('agy-link/es')!['account.add']
+  delete dictionaries.get('agy-worker/es')!['account.add']
   assert.equal(t('account.add'), 'Add Google account')
   for (const dispose of cleanup.reverse()) dispose()
   assert.deepEqual([...catalog.keys()], ['zh', 'en'])
@@ -122,7 +122,7 @@ test('mounted panel subscribes to locale revisions and exposes localized accessi
     setLocale(language: string) { active = language; listeners.forEach(listener => listener()) },
   }
   plugin.apply({ locale, effect(callback: () => void) { callback() }, slots: { inject(_name: string, callback: () => void) { callback() }, register(opts: { id?: string; key?: string; name?: string }, registered: (props?: unknown) => unknown) {
-    if ((opts?.name === 'main' && opts?.key === 'agy-link') || opts?.key === 'agy-link') component = registered;
+    if ((opts?.name === 'main' && opts?.key === 'agy-worker') || opts?.key === 'agy-worker') component = registered;
     return () => {}
   } } })
   assert.ok(component)
@@ -181,7 +181,7 @@ test('modal host manager reactively promotes secondary header on unmount and sup
     slots: {
       inject(_name: string, cb: () => void) { cb() },
       register(opts: { id?: string }, comp: any) {
-        if (opts?.id === 'agy-link-status') sessionStatusComponent = comp
+        if (opts?.id === 'agy-worker-status') sessionStatusComponent = comp
         return () => {}
       },
     },
@@ -235,7 +235,7 @@ test('REGRESSION: session status badge claims primary host on mount to eliminate
     slots: {
       inject(_name: string, cb: () => void) { cb() },
       register(opts: { id?: string }, comp: any) {
-        if (opts?.id === 'agy-link-status') sessionStatusComponent = comp
+        if (opts?.id === 'agy-worker-status') sessionStatusComponent = comp
         return () => {}
       },
     },
@@ -289,7 +289,7 @@ test('REGRESSION: re-rendering session headers during status sync does not thras
     slots: {
       inject(_name: string, cb: () => void) { cb() },
       register(opts: { id?: string }, comp: any) {
-        if (opts?.id === 'agy-link-status') sessionStatusComponent = comp
+        if (opts?.id === 'agy-worker-status') sessionStatusComponent = comp
         return () => {}
       },
     },

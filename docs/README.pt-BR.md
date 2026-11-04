@@ -1,4 +1,6 @@
-# dsh-agy-link — Português (Brasil)
+# dsh-agy-worker — Português (Brasil)
+
+> ⚠️ **Aviso:** este documento pode não refletir o fork. As versões autoritativas e atualizadas são o [README principal](../README.md#中文) (chinês) e o [README.en.md](./README.en.md) (inglês). This translation may be out of date; see the Chinese and English READMEs for the authoritative content.
 
 Integre modelos Google Antigravity ao DeepSeek Harness (DSH) por meio do CLI oficial e não modificado `agy`. O plugin oferece streaming, thinking, atividade de ferramentas, medição de tokens, login OAuth pela interface e painel de quota.
 
@@ -23,7 +25,7 @@ Substitua a porta pelo proxy local correto. Também é possível configurar um p
 
 ```bash
 # Instale o plugin no profile web
-dsh plugin --profile web add dsh-agy-link
+dsh plugin --profile web add dsh-agy-worker
 
 # Inicie o DSH Web
 dsh web

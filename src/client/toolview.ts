@@ -20,7 +20,7 @@ type ReactApi = {
 function react(): ReactApi {
 	const mod = require('react') as unknown;
 	if (mod === undefined || mod === null) {
-		throw new Error('dsh-agy-link toolview requires react at render time (browser host)');
+		throw new Error('dsh-agy-worker toolview requires react at render time (browser host)');
 	}
 	return mod as ReactApi;
 }
@@ -1867,7 +1867,7 @@ const gDoc = (globalThis as unknown as {
 }).document;
 
 if (gDoc !== undefined && gDoc !== null) {
-	const styleId = 'dsh-agy-link-toolview-css';
+	const styleId = 'dsh-agy-worker-toolview-css';
 	if (gDoc.getElementById(styleId) === null) {
 		const st = gDoc.createElement('style');
 		st.id = styleId;

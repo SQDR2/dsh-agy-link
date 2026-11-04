@@ -204,19 +204,19 @@ Attached via `settings.section` slot under DSH Settings $\rightarrow$ Antigravit
 
 ## 6. Host Web Server Routes
 
-All host routes are namespaced under `/plugins/agy-link/`:
+All host routes are namespaced under `/plugins/agy-worker/`:
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/plugins/agy-link/pool` | Get all accounts, live quota bars, cooldown timers, mode |
-| `POST` | `/plugins/agy-link/pool/add` | Allocate a new account slot and generate OAuth URL & QR |
-| `POST` | `/plugins/agy-link/pool/auth-code` | Submit OAuth code, exchange tokens, fetch initial quota |
-| `POST` | `/plugins/agy-link/pool/auth-cancel` | Cancel in-progress OAuth for a slot |
-| `POST` | `/plugins/agy-link/pool/refresh-quota`| Refresh real-time quota for one or all accounts |
-| `POST` | `/plugins/agy-link/pool/remove` | Delete an account directory and its records |
-| `POST` | `/plugins/agy-link/pool/reorder` | Update account priority order |
-| `POST` | `/plugins/agy-link/pool/proxy` | Update optional proxy override for an account |
-| `POST` | `/plugins/agy-link/pool/test` | Test connectivity & quota health of an account slot |
+| `GET` | `/plugins/agy-worker/pool` | Get all accounts, live quota bars, cooldown timers, mode |
+| `POST` | `/plugins/agy-worker/pool/add` | Allocate a new account slot and generate OAuth URL & QR |
+| `POST` | `/plugins/agy-worker/pool/auth-code` | Submit OAuth code, exchange tokens, fetch initial quota |
+| `POST` | `/plugins/agy-worker/pool/auth-cancel` | Cancel in-progress OAuth for a slot |
+| `POST` | `/plugins/agy-worker/pool/refresh-quota`| Refresh real-time quota for one or all accounts |
+| `POST` | `/plugins/agy-worker/pool/remove` | Delete an account directory and its records |
+| `POST` | `/plugins/agy-worker/pool/reorder` | Update account priority order |
+| `POST` | `/plugins/agy-worker/pool/proxy` | Update optional proxy override for an account |
+| `POST` | `/plugins/agy-worker/pool/test` | Test connectivity & quota health of an account slot |
 
 ---
 

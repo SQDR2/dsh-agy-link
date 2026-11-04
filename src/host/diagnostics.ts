@@ -68,7 +68,7 @@ export function writeDoctorReport(deps: DoctorDeps): string {
   const cat = deps.catalog().get()
   const bindings = deps.store().all()
   const lines: string[] = []
-  lines.push('# dsh-agy-link diagnostic report')
+  lines.push('# dsh-agy-worker diagnostic report')
   lines.push('')
   lines.push('- generated: ' + new Date().toISOString())
   lines.push('- agy binary: ' + (deps.bin() ?? 'NOT FOUND'))

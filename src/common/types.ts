@@ -1,10 +1,10 @@
-// Shared vocabulary for dsh-agy-link: plugin config, provider-route ids,
+// Shared vocabulary for dsh-agy-worker: plugin config, provider-route ids,
 // stable error codes, and the normalized event stream produced by the
 // stream-json parser and consumed by the StreamChunk mapper.
 
 export const PROVIDER_ID = 'antigravity'
-export const PLUGIN_ID = 'agy-link'
-export const PKG_NAME = 'dsh-agy-link'
+export const PLUGIN_ID = 'agy-worker'
+export const PKG_NAME = 'dsh-agy-worker'
 
 export type PermissionMode = 'skip' | 'plan' | 'accept-edits'
 

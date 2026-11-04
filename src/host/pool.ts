@@ -166,7 +166,7 @@ export class AccountPoolManager {
       // quietly evaporated on restart. Surface it once per failure instead.
       try {
         // No logger reaches this class; stderr is the honest channel.
-        console.error('[dsh-agy-link] pool persist failed: ' + String(e))
+        console.error('[dsh-agy-worker] pool persist failed: ' + String(e))
       } catch {
         // ignore
       }

@@ -427,7 +427,7 @@ async function loadAgyDbData(conversationId: string, accountHome?: string): Prom
     if (!warnedUnavailable) {
       warnedUnavailable = true
       try {
-        console.error('[dsh-agy-link] agy conversation DB unavailable (' + String(err) + ') — falling back to stream-carried metadata only' + (code === 'ENOENT' ? '; install the sqlite3 CLI for full tool args and thoughts' : ''))
+        console.error('[dsh-agy-worker] agy conversation DB unavailable (' + String(err) + ') — falling back to stream-carried metadata only' + (code === 'ENOENT' ? '; install the sqlite3 CLI for full tool args and thoughts' : ''))
       } catch {
         // ignore
       }

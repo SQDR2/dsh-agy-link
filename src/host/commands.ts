@@ -580,7 +580,7 @@ async function renderStatus(deps: CommandDeps): Promise<string> {
   const errorKinds = last?.toolErrors.map(classifyToolError) ?? []
   const hasHeadlessPermissionDenial = errorKinds.includes('approval')
   const lines = [
-    '**dsh-agy-link status**',
+    '**dsh-agy-worker status**',
     '- agy binary: ' + (bin ?? 'not found — install via https://antigravity.google/docs/cli/install'),
     '- version: ' + (deps.version() ?? 'unknown'),
     '- auth: ' + (auth ? auth.phase + (auth.message ? ' — ' + auth.message : '') : 'unknown'),

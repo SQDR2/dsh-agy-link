@@ -251,7 +251,7 @@ export class AuthHelper {
     this.urlTimer = null;
     // Resolve a pending begin() instead of dropping its resolver: the HTTP
     // route awaits that promise, and a dropped waiter left
-    // /plugins/agy-link/auth hanging forever after a cancel during the
+    // /plugins/agy-worker/auth hanging forever after a cancel during the
     // URL wait. null = "no URL" and begin() reports "already authenticated?".
     const waiter = this.urlWaiter;
     this.urlWaiter = null;

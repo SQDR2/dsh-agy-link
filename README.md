@@ -1,12 +1,12 @@
-<h1 align="center">🛰️ dsh-agy-link</h1>
+<h1 align="center">🛰️ dsh-agy-worker</h1>
 
 <p align="center">
-  <b>DeepSeek Harness × Google Antigravity</b> — 多账号智能池化与官方 agy CLI 驱动桥接 / Multi-Account Pool & Native agy CLI Bridge for DSH
+  <b>把 Google Antigravity（agy CLI）当作 DeepSeek Harness 里的 Worker</b><br/>
+  A fork of <a href="https://github.com/amlyczz/dsh-agy-link">dsh-agy-link</a> tuned for <a href="https://github.com/SQDR2/dsh-fusion">dsh-fusion</a> as the Sidekick
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/dsh-agy-link"><img src="https://img.shields.io/npm/v/dsh-agy-link?color=cb3837&label=npm&logo=npm" alt="npm"/></a>
-  <a href="https://github.com/amlyczz/dsh-agy-link/actions/workflows/ci.yml"><img src="https://github.com/amlyczz/dsh-agy-link/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
+  <a href="https://github.com/SQDR2/dsh-agy-worker/actions/workflows/ci.yml"><img src="https://github.com/SQDR2/dsh-agy-worker/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
   <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT"/>
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="node"/>
 </p>
@@ -15,8 +15,6 @@
   <b>🌐 Language / 语言：</b>
   <a href="#中文">中文</a> ·
   <a href="#english">English</a> ·
-  <a href="./docs/README.pt-BR.md">Português (Brasil)</a> ·
-  <a href="./docs/README.es.md">Español</a> ·
   <a href="./docs/README.en.md">English (standalone)</a>
 </p>
 
@@ -24,7 +22,166 @@
 
 # 中文
 
-把 **Google Antigravity 模型接入 DeepSeek Harness（DSH）** —— 支持**多账号智能池化轮换**、**官方多 Bucket 配额监控（5小时滚动 + 7天周额度 + Argon 独立周池）**、**浏览器免粘贴一键登录**与**浅色/深色主题高对比度自适应**，由官方未修改的 `agy` CLI 驱动，完整支持流式输出、思考折叠（thinking）、原生工具卡片与精确 token 用量。
+## 这个仓库是什么
+
+`dsh-agy-worker` 是 [`amlyczz/dsh-agy-link`](https://github.com/amlyczz/dsh-agy-link) 的一个 **fork**。上游插件负责把 Google Antigravity 的模型接进 DeepSeek Harness（DSH）——多账号池化、配额监控、浏览器登录、流式与思考映射，这些能力本 fork 全部保留。
+
+本 fork 只做一件事：**让 agy 真正能当一个「被调用方驱动」的 Worker**，也就是让 [`dsh-fusion`](https://github.com/SQDR2/dsh-fusion) 能把 **agy（Gemini / Claude / GPT-OSS）选作 Sidekick**，并且这一轮委派真的能跑通、能交回结果，而不是卡在「工具表里有名字，却永远没有一次调用」。
+
+> 上游的 `dsh-agy-link` 名字、npm 包与仓库都不变。本仓库是独立发布线，包名 `dsh-agy-worker`，内部路由前缀 `/plugins/agy-worker/*`，数据目录 `~/.dsh/agy-worker`。
+
+---
+
+## 为什么需要这个 fork
+
+Fusion 的 Sidekick 是一轮「由调用方驱动的工具循环」：DSH 在请求里公布 Worker 的工具面（`workerTools` 加 `fusion_*`），期望模型**调用**它们。而 agy 是一条自带 agent loop 的 provider 路线——它不会直接回一个 `bash` 调用，它只会把这一步以**自己的传输名**报回来。
+
+要让这条链路成立，需要**三个条件同时成立**，上游当时缺了其中两个，且失败方式全是静默的：
+
+| 条件 | 作用 | 缺失时的现象 | 本 fork |
+| --- | --- | --- | --- |
+| `mcpBridge: true` | agy 能**执行** DSH 工具 | 工具可达但执行不到 | 默认开启 |
+| 调用方工具面里有 `agy_tool` | agy 的**回传通道** | 适配器没有可发的 tool-call 块 → 整轮退化成纯文本，宿主报 `WORKER_TOOLS_UNREACHABLE` | 记一条 `no-tool-transport` 警告，指明要改的是调用方 |
+| `permissionMode: 'skip'` | 让 MCP 调用**被允许** | agy 在 print 模式下自动拒绝：`a tool required the "mcp" permission that headless mode cannot prompt for` | `/agy status` 直接报出来 |
+| `/tools` 按调用方 scope 列举 | `fusion_*` 能被**看见** | 列表里根本没有 `fusion_*`，任何 allowlist 都救不回来 | 已修 |
+
+最后一条是根因级的：`fusion_*` **不是**注册在全局，而是注册在 Agent 自己的 scope 上（`agent.ctx.tools.register`）。而 bridge 的 `/tools` 之前调用不带参数的 `svc.schemas()`，DSH 的语义是**省略 scope = 只返回全局层**。allowlist 又是在**列出之后**才过滤的，所以写什么名字都只会得到空列表。
+
+---
+
+## 本 fork 相对上游的改动
+
+| 提交 | 内容 |
+| --- | --- |
+| `fix(mcp-bridge): scope /tools to the calling agent` | `/tools` 与 `/call` 一样解析 `X-DSH-Session` 得到调用方 agent，并调用 `schemas(agent)`。会话 key 两种形态（顶层 `session-<uuid>` 与子 agent 的裸 `<uuid>`）都按原值优先解析，仅在解析不到时补 `session-` 前缀重试一次 |
+| `feat(host): enable the MCP bridge by default and report unreachable tool tables` | `mcpBridge` 默认 `true`（`mcpBridge: false` / `DSH_AGY_MCP_BRIDGE=0` 仍可关闭）；调用方天花板里没有 `agy_tool` 时不再静默降级，改为每个会话记一条可执行的 `no-tool-transport` 警告；`/agy status` 新增桥接开关、桥接工具集、`permissionMode` 提示 |
+| `feat(client): move the Antigravity console to a left-sidebar panel` | 控制台从「设置 → 齿轮」迁到左侧边栏独立面板（`sidebar.panellist` + `main` 页），复用同一个 `AgySettingsSection` |
+| `feat(client): place the sidebar entry directly below 自动化任务` | `sidebar.panellist` 的 `order` 由 `100` 调整为 `20`，入口默认落在「自动化任务」（`order: 10`）下方、「更多」上方 |
+
+此外本 fork 完成了整体改名：包名 `dsh-agy-worker`、内部 id `agy-worker`、路由 `/plugins/agy-worker/*`。旧数据目录 `~/.dsh/agy-link` 会在首次启动时**自动迁移**到 `~/.dsh/agy-worker`（覆盖运行期覆盖项、会话映射、媒体缓存与预热历史；若新目录已存在则不做任何覆盖）。账号池目录 `~/.dsh/agy-accounts` 不变，**已登录的账号无需重新登录**。
+
+---
+
+## 与 dsh-fusion 配合使用
+
+### 1. 在 Fusion 里把 agy 选作 Sidekick
+
+装好两个插件后，打开左侧边栏的 **Fusion** 入口，把 Sidekick 选成一个 Antigravity 模型（Gemini / Claude / GPT-OSS 均可），Lead 照常选你的前沿模型。
+
+### 2. 确认 Worker 的工具天花板包含回传通道
+
+`agy_tool` 是 agy 唯一的回传通道。当前 `dsh-fusion` 会用 `withRouteTransport()` 在检测到 `antigravity` 路线已注册时**自动**把它加进天花板；若你的版本还没有这个机制，需要手动写：
+
+```yaml
+- id: dsh-model-fusion
+  config:
+    workerTools:
+      - bash
+      - read
+      - write
+      - edit
+      - glob
+      - grep
+      - job_output
+      - job_kill
+      - agy_tool        # ← 回传通道，缺了就只有纯文本
+```
+
+> 适配器不会伪造这个工具：宿主没注册 `agy_tool` 时硬发会被拒为 `unknown tool "agy_tool"`，所以它选择停止按工具切分 span，并在日志里留一条 `no-tool-transport` 警告。
+
+### 3. `permissionMode` 必须是 `skip`
+
+这是最容易漏的一条，且没有任何配置项能隐含它：agy 在 print 模式下会把 MCP 调用**自动拒绝**，除非它被允许自动批准。`accept-edits`、`auto`、`plan` 在 headless 下都不行（已对 `agy` 1.4.12 实测，均以 `a tool required the "mcp" permission that headless mode cannot prompt for` 中止回合）。
+
+要么 `permissionMode: skip`，要么在 `settings.json` 的 `permissions.allow` 里加一条 `mcp(<target>)` 规则。
+
+### 4. 收窄 bridge 白名单
+
+白名单**宁可偏窄**：它同时是执行期闸门（不在名单里的 `/call` 返回 403），也是防止被提示注入的 agy 子进程越权访问的唯一约束。
+
+```yaml
+mcpBridge: true
+mcpConfigScope: global
+mcpToolAllowlist: "fusion_submit_result,fusion_read_state,fusion_read_evidence,bash,read,write,edit,glob,grep,job_output,job_kill"
+```
+
+> Windows 把 `bash` 换成 `pwsh`；改过 `workerTools` 就跟着改。`mcpConfigScope` 保持 `global`——agy 1.4+ 只读全局注册表，写成 `workspace` 是「配了但不起作用」的常见原因。
+
+完整配置面、验证步骤与排障对照见 **[docs/MCP-BRIDGE-SETUP.md](./docs/MCP-BRIDGE-SETUP.md)**。该文档按「已验证」的配置面写成，先读它的前置条件一节。
+
+---
+
+## 安装
+
+> 🚨 **前置：系统代理 / TUN 模式必须开启。** Google Antigravity 服务与 OAuth 需要直连 `oauth2.googleapis.com`、`cloudcode-pa.googleapis.com` 等。推荐开启 Clash / Surge / v2rayA / Sing-box 的 **TUN 虚拟网卡模式**；若终端未被接管，启动 DSH 前先导出：
+>
+> ```bash
+> export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890 ALL_PROXY=socks5://127.0.0.1:7890
+> ```
+>
+> 端口请换成你本地代理的实际端口。也可以在控制台卡片上点「🌐 代理」为**单个账号**配置独立出口。
+
+| 前置项 | 验证方式 |
+| --- | --- |
+| **DeepSeek Harness (DSH)** | `dsh --version` |
+| **Node.js ≥ 24** | `node --version` |
+| **Google Antigravity `agy` CLI** | 按 [Google 官方文档](https://antigravity.google/docs/cli/install) 安装；`agy --version` 能输出版本号即可 |
+
+本包未发布到 npm，从 Git 仓库或本地路径安装：
+
+```bash
+# 方式 A：从 GitHub 安装（pnpm 会执行 prepare 脚本自动构建）
+dsh plugin --profile web add github:SQDR2/dsh-agy-worker
+
+# 方式 B：本地已 clone 的目录
+git clone https://github.com/SQDR2/dsh-agy-worker.git ~/github/dsh-agy-worker
+cd ~/github/dsh-agy-worker && npm ci && npm run build && cd -
+dsh plugin --profile web add ~/github/dsh-agy-worker
+
+# 安装完成后启动 DSH Web GUI
+dsh web
+```
+
+首次进入后：
+
+```bash
+# 检查插件、agy 版本、桥接状态与额度
+/agy status
+
+# 添加账号：点顶部 "AGY (n)" 徽标 → 「➕ 添加账号」，浏览器一键登录
+# 或为主账号发起登录：
+/agy auth
+
+# 然后在 /model 选择器里挑一个 Antigravity 模型
+```
+
+> 💡 agy 尚未登录也能直接装插件——登录在 GUI 里完成，全程无需手动复制粘贴授权码。
+
+---
+
+## 全部功能
+
+上游能力本 fork 完整保留。
+
+| 能力 | 说明 |
+| --- | --- |
+| 👥 **多账号池化轮换** | 主账号 + 任意数量备用账号；429 或配额耗尽时自动平滑接力，对话不中断；额度到期早的账号优先接班 |
+| 📊 **官方多 Bucket 配额监控** | 直连 `v1internal:retrieveUserQuotaSummary`，同时呈现 **5h 滚动额度**、**7 天周额度**与付费账号专属的 **Argon 独立周池**，含重置倒计时 |
+| 🔑 **GUI 内浏览器免粘贴登录** | 点「➕ 添加账号」自动调起系统浏览器，本地回环监听捕获授权凭证，零复制粘贴 |
+| 🔌 **原生模型路由** | 在 DSH 注册 `antigravity` 提供方，`/model` 里随心切换 Gemini / Claude / GPT-OSS / Argon |
+| 🌊 **完整流式映射** | 文本、思考过程（thinking turn）与工具活动无损映射到 DSH 原生流协议 |
+| 🃏 **原生工具卡片** | agy 执行的终端命令、文件修改渲染为 DSH 原生卡片；MCP 元工具（`call_mcp_tool` 等）会拆包为终端 / 搜索卡片 |
+| 🔗 **会话上下文保真** | DSH 会话与 agy 原生会话绑定（`--conversation`），历史由 agy 管理，每轮只发增量 |
+| ⚡ **原生上下文缓存计量** | 完整映射 Gemini 原生缓存协议（`cache_read_tokens`），适配 1M 上下文 |
+| 🧠 **抖动安全鉴权** | 基于 agy 运行日志的 `keyringAuth` 传输证据区分「网络抖动」与「真登出」，抖动按可重试网络错误处理；粘性隔离需二次确认 |
+| ⚡ **分模型族独立冷却** | Gemini / Claude / GPT-OSS / Argon 的速率限制独立计算，一族受限不影响其他族 |
+| 🌐 **独立账号代理** | 每账号可绑独立 HTTP(S) / SOCKS 代理；未配置时自动探测系统代理 |
+| 🚀 **副账号并发租约** | Windows 凭据槽支持同一副账号多会话共享租约并发，仅跨账号身份切换时串行 |
+| 🎯 **DSH 目标与计划集成** | 长任务自动携带 DSH goal / plan 上下文，工具续跑不丢任务状态 |
+| 🖼 **图片多模态** | 图片落盘本地媒体目录，经 `--add-dir` 安全授权给 agy |
+| 🤝 **`agy_ask` 委派工具** | 允许任意 DSH 模型把单次任务委托给 Antigravity 模型 |
+| 🎛 **左侧边栏控制台** | 侧边栏入口（默认在「自动化任务」下方）+ 顶部 `AGY (n)` 徽标，账号池、配额进度条与代理状态一处可见 |
+| ⌨️ **`/agy` 命令族** | `status` / `pool` / `auth` / `models` / `mode` / `effort` / `workspace` / `goal` / `session` / `enable-account` / `disable-account` / `clear` / `doctor` / `help` |
 
 <p align="center">
   <img src="./docs/assets/dashboard.png" alt="Antigravity 管理控制台 - 多账号池化与配额监控" width="460" />
@@ -39,171 +196,70 @@
 
 ---
 
-> 🚨 **【国内用户核心前置：必须开启系统代理 / TUN 模式！】**
->
-> Google Antigravity 服务及 OAuth 登录需要直连 Google 海外官方服务器（`oauth2.googleapis.com`、`cloudcode-pa.googleapis.com` 等）。
->
-> 1. **推荐方式（最稳妥）**：开启代理工具（Clash / Surge / v2rayA / Sing-box / Loon 等）的 **TUN 虚拟网卡模式（或系统代理全局接管）**，确保终端命令、后台 Node.js 进程及浏览器均能顺畅访问 Google 网络。
-> 2. **终端代理环境变量**：若终端未被代理自动接管，启动 DSH 或运行命令前请在终端中执行：
->    ```bash
->    export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890 ALL_PROXY=socks5://127.0.0.1:7890
->    ```
->    *(注：端口 `7890` 请替换为你本地代理软件的实际端口)*
-> 3. **GUI 单账号独立代理**：进入 DSH「设置 → Antigravity」或点击顶部 `AGY` 徽标，点击卡片上的「🌐 代理」按钮，可为特定账号单独配置专属代理 URL（如 `http://127.0.0.1:7890`），实现多账号不同 IP 出口隔离。
-
----
-
-## 🌟 核心亮点：多账号池化与智能轮换
-
-你拥有多个 Google Antigravity / Gemini 账号？**dsh-agy-link 让多账号管理变得极致简单与自动化**：
-
-- 👥 **多账号池化管理 (Account Pool)**：在 DSH 内添加任意数量的 Google 账号（主账号 + 备用账号群），每个账号拥有独立的 HOME 目录沙箱与凭证隔离。
-- 🔄 **顺序耗尽故障转移 (Sequential Drain)**：当前账号额度用尽（触发 429 限流或 5h / 周额度耗尽）时，系统**自动平滑接力至下一个可用账号**，对话完全不中断！
-- 🕰 **额度到期优先轮换 (Quota-Expiry-First)**：多个账号可用时，优先切换到**重置窗口最早到期**的账号，把"还剩很久才重置"的额度留给后面，整体池化利用率最大化。
-- 🧠 **网络抖动智能甄别 (Jitter-Safe Auth)**：代理抖动导致的 keyring 鉴权超时会被自动识别为**可重试的网络错误**而非"登录失效"——基于 agy 本次运行日志的 `keyringAuth` 传输证据精准分类，且粘性"需重新登录"隔离需二次确认，健康账号绝不会被误标。
-- 📊 **官方多 Bucket 配额监控 (Multi-Bucket Quota)**：直接调用 Antigravity 官方专用的 `v1internal:retrieveUserQuotaSummary` 接口，同时展示 **5小时滚动额度**、**7天周额度**，以及付费 Pro/Ultra 账号专属的 **Gemini 4 Argon 独立周额度池**（不占用普通 Gemini 池）。
-- 🔀 **手动切换当前账号 (Manual Switch-Active)**：控制台卡片一键「设为当前使用」，即刻把调度指针钉到指定账号。
-- 🔑 **GUI 内浏览器免粘贴登录 (In-GUI Zero-Paste OAuth)**：点击「➕ 添加账号」自动调起系统浏览器，本地回环监听自动捕获授权凭证，**全程无需手动复制粘贴授权码**。
-- 🎨 **多主题高对比度自适应 (Light & Dark Themes)**：原生适配 DSH 浅色/深色主题，告别发暗发灰与看不清文字，UI 视觉清晰锐利。
-- 🌐 **独立账号网络代理 (Per-Account Proxy)**：支持为每个账号独立绑定 HTTP(S) / SOCKS 代理，避免多账号同 IP 引起风控；未显式配置时自动探测系统代理（macOS `scutil` / Windows 注册表 / Linux gsettings）。
-- ⚡ **分模型族独立冷却 (Family-Scoped Cooldown)**：Gemini、Claude、GPT-OSS 与 Argon 的速率限制独立计算，某个模型族受限不影响其他模型族正常调用。
-
----
-
-## ✨ 全功能特性一览
-
-| 能力 | 说明 |
-| ---- | ---- |
-| 🎨 **官方专属矢量 Logo** | 36×36 高质感纯矢量微标（`assets/icon.svg`），透明底自适应深浅主题；设置左侧导航菜单（`[role="dialog"] nav`）动态替换系统齿轮，呈现专属品牌标识 |
-| 🧩 **设置与插件面板统一** | 在 DSH「设置 → 插件」详情页直接内嵌 Antigravity 完整控制台，账号池、配额监控与代理配置一站式操作，列表保持轻量整洁 |
-| 🚀 **副账号并发租约** | Windows 凭据槽支持同一副账号多会话共享租约并发运行，消除单账号多任务排队饥饿；仅在跨账号身份切换时串行交接 |
-| ⚡ **原生上下文缓存与真实计量** | 完整映射 Google Gemini 原生上下文缓存协议（`cache_read_tokens`），精准追踪缓存读取与物理上下文占用，深度适配 1M 超长上下文 |
-| 👥 **多账号池化轮换** | 支持主账号 + 多个备用账号；遇到 429 或配额耗尽自动平滑切换，模型族独立冷却，额度到期早的账号优先接班 |
-| 🧠 **抖动安全鉴权 (Jitter-Safe Auth)** | 基于 agy 运行日志的 keyring 传输证据区分"网络抖动"与"真登出"，抖动自动按可重试网络错误处理；粘性隔离需二次确认，杜绝误标"需重新登录" |
-| 📊 **官方多 Bucket 配额监控** | 实时拉取官方端点，同时呈现 **5h 滚动额度**、**7d 周额度**与 **Argon 独立周池**（付费 Pro/Ultra）多进度条与倒计时，单模型明细可展开 |
-| 🔑 **浏览器一键登录** | 点击添加账号自动唤起 Google 授权页，本地回环自动捕获，全程无需复制粘贴任何代码 |
-| 🔀 **手动切换当前账号** | 控制台「设为当前使用」按钮即刻钉住调度指针；顶部徽标始终显示服务器实际调度的账号 |
-| 🎨 **多主题高对比 UI** | 浅色、深色主题自适应变色，纯矢量 SVG 图标（无 Emoji），字迹清晰不发暗 |
-| 🌐 **独立账号代理** | 每个账号支持独立配置 HTTP(S) 代理，隔离 IP 出口；亦可自动探测系统代理 |
-| 🔌 **原生模型路由** | 在 DSH 模型配置中注册 `antigravity` 提供方，`/model` 选择器随心切换 Gemini / Claude / GPT-OSS / Argon |
-| 🌊 **完整流式映射** | 文本、思考过程（thinking turn）与工具活动均无损映射到 DSH 原生流协议 |
-| 🃏 **原生工具卡片** | agy 执行的终端命令（`run_command`）、文件修改（inline diff）均以 DSH 原生卡片渲染 |
-| 🔗 **会话上下文保真** | DSH 会话与 agy 原生会话绑定（`--conversation`），由 agy 管理完整历史，每轮仅发送增量 |
-| 🎯 **DSH 目标与计划集成** | 长任务自动携带 DSH goal / plan 上下文，工具续跑不丢任务状态 |
-| 📊 **精确 Token 统计** | 输入 / 输出 / 思考 / 缓存读取 token 完整计入 DSH 用量统计，全面适配 1M 上下文 |
-| 🎛 **顶部控制台徽标** | 顶部栏 `AGY (n)` 徽标一键弹出控制台，直观查看账号池、配额进度条与代理状态 |
-| 🖼 **图片多模态** | 支持多模态图片传入，自动落盘本地媒体目录并通过 `--add-dir` 安全授权给 agy 查看 |
-| 🤝 **`agy_ask` 辅助工具** | 允许任意 DSH 模型把单次任务委托给 Antigravity 模型（AskAntigravity 协作模式） |
-| ⌨️ **`/agy` 快捷命令族** | `status` / `pool` / `auth` / `models` / `mode` / `effort` / `workspace` / `goal` / `session` / `enable-account` / `disable-account` / `clear` / `doctor` / `help` |
----
-
-## 📋 前置要求
-
-在安装本插件前，请确保具备以下环境：
-
-| 前置项 | 说明 / 验证方式 |
-| --- | --- |
-| **1. 系统网络代理** | **【必须开启】**（推荐开启 Clash / Surge / v2rayA 的 TUN 模式或设置 `HTTPS_PROXY` 环境变量，确保可流畅连接 Google 服务） |
-| **2. DeepSeek Harness (DSH)** | 你正在使用的 DSH 客户端；`dsh --version` 可验证 |
-| **3. Node.js ≥ 24** | DSH 依赖环境；`node --version` 验证 |
-| **4. Google Antigravity `agy` CLI** | 按 [Google 官方安装文档](https://antigravity.google/docs/cli/install) 安装（支持 macOS / Linux / Windows）。`agy --version` 能输出版本号即表示安装成功 |
-
-> 💡 **提示**：即使你的 agy 尚未登录，也可以直接安装插件！在 DSH 界面顶部点击 `AGY` 徽标或进入「设置 → Antigravity」，点击「➕ 添加账号」即可直接在浏览器中完成登录。
-
----
-
-## 🚀 快速上手
-
-```bash
-# 0. 确保系统代理 / TUN 模式已开启（国内网络必需）：
-export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890
-
-# 1. 安装插件（npm 官方包，无需编译构建）：
-dsh plugin --profile web add dsh-agy-link
-
-# 升级到最新版：
-# dsh plugin --profile web add dsh-agy-link@latest --registry https://registry.npmjs.org
-
-# 2. 启动 DSH Web GUI，在输入框中检查状态：
-#   /agy status
-
-# 3. 登录与添加账号：
-#   方式 A：点击顶部导航栏的 "AGY (n)" 徽标，点击 "➕ 添加账号"，浏览器一键登录；
-#   方式 B：输入框执行 /agy auth 为主账号发起登录。
-
-# 4. 在 /model 选择器中挑选 Antigravity 模型，立即开启对话！
-```
-
----
-
-## ⚙️ 配置说明
-
-插件配置可在 `/plugin`、设置面板或环境变量中灵活调整：
+## 配置
 
 | 键名 | 环境变量 | 默认值 | 作用说明 |
 | --- | --- | --- | --- |
 | `enabled` | `DSH_AGY_ENABLED` | `true` | 插件主开关 |
 | `agyBin` | `DSH_AGY_BIN` | 自动探测 | 显式指定 `agy` 二进制路径 |
-| `permissionMode` | `DSH_AGY_MODE` | `skip` | 权限模式：`skip`（无人值守执行）/ `plan` / `accept-edits` |
+| `permissionMode` | `DSH_AGY_MODE` | `skip` | `skip`（无人值守执行）/ `plan` / `accept-edits`。**Fusion 场景必须 `skip`** |
+| `mcpBridge` | `DSH_AGY_MCP_BRIDGE` | `true` | 是否把 DSH 工具经回环 MCP 桥暴露给 agy。关闭后 agy 调不到任何 DSH 工具 |
+| `mcpToolAllowlist` | `DSH_AGY_MCP_TOOL_ALLOWLIST` | `''` | 逗号分隔放行名单，**空 = 全部放行**（内部工具除外）。匹配的是**原始 DSH 名**，不是 MCP 重写名 |
+| `mcpConfigScope` | `DSH_AGY_MCP_CONFIG_SCOPE` | `global` | 写哪个 MCP 注册表。agy 1.4+ 只读 `global` |
+| `mcpConfigPath` | `DSH_AGY_MCP_CONFIG_PATH` | `''` | 覆盖注册表文件绝对路径 |
 | `defaultModel` | `DSH_AGY_DEFAULT_MODEL` | `(agy 默认)` | 默认模型 slug |
 | `defaultEffort` | `DSH_AGY_DEFAULT_EFFORT` | `(模型默认)` | 思考预算：`low` / `medium` / `high` |
-| `hiddenModels` | `DSH_AGY_HIDDEN_MODELS` | `[]` | 在 `/model` 选择器中隐藏的模型 slug 列表（黑名单语义，新模型默认可见；建议直接在设置面板"模型显示"中点选管理） |
+| `hiddenModels` | `DSH_AGY_HIDDEN_MODELS` | `[]` | `/model` 选择器的黑名单（新模型默认可见） |
 | `timeoutMs` | `DSH_AGY_TIMEOUT_MS` | `600000` | 单轮活跃看门狗超时（毫秒） |
-| `longToolIdleMinutes` | `DSH_AGY_LONG_TOOL_IDLE_MINUTES` | `240` | 存在未完成工具步骤（ACTIVE）时的空闲预算（分钟）；`0` = 不抬高预算，卡死的工具按 `timeoutMs` 快速失败 |
-| `workspaceRoot` | `DSH_AGY_WORKSPACE_ROOT` | 会话 cwd | agy 工作区根目录（默认跟随当前会话工作区） |
-| `suppressAgyAutoUpdate` | `DSH_AGY_SUPPRESS_AUTOUPDATE` | Windows `true`，其他平台 `false` | 每次 spawn 前刷新 agy 的更新检查时间戳，阻断 `--bg-updater` 子进程链（Windows 闪窗根因）。关闭后 agy 恢复自动更新检查 |
-| `autoWarmup` | `DSH_AGY_AUTO_WARMUP` | `false` | 7 天周配额自动预热（opt-in）：周额度到达重置时间或冷启动时发送极小探活请求，提前激活 7 天计时器。开启后每 5 分钟巡检一次；该路径直连 Google 内部端点，请自行评估风控风险 |
-| `warmupModels` | `DSH_AGY_WARMUP_MODELS` | `gemini-3.8-flash,claude-sonnet-4-6` | 自动预热使用的模型列表（逗号分隔）；空数组表示不自动预热 |
+| `longToolIdleMinutes` | `DSH_AGY_LONG_TOOL_IDLE_MINUTES` | `240` | 存在未完成工具步骤时的空闲预算（分钟）；`0` = 不抬高，卡死工具按 `timeoutMs` 快速失败 |
+| `workspaceRoot` | `DSH_AGY_WORKSPACE_ROOT` | 会话 cwd | agy 工作区根目录 |
+| `suppressAgyAutoUpdate` | `DSH_AGY_SUPPRESS_AUTOUPDATE` | Windows `true`，其他 `false` | 每次 spawn 前刷新 agy 的更新检查时间戳，阻断 `--bg-updater` 子进程链（Windows 闪窗根因） |
+| `autoWarmup` | `DSH_AGY_AUTO_WARMUP` | `false` | 7 天周配额自动预热（opt-in）。该路径直连 Google 内部端点，请自行评估风控风险 |
+| `warmupModels` | `DSH_AGY_WARMUP_MODELS` | `gemini-3.8-flash,claude-sonnet-4-6` | 预热使用的模型列表，空 = 不预热 |
 
 ---
 
-## 🧩 架构与工作原理
+## 架构与工作原理
 
-1. **短生命周期进程驱动**：每一轮 DSH 对话启动一个独立的官方 `agy -p --output-format stream-json` 进程，解析 NDJSON 事件流。
-2. **多账号沙箱机制**：除主账号沿用系统默认 Keychain / HOME 外，所有备用账号在插件私有目录下建立专属 HOME 隔离区，独立写入 agy 格式的标准 OAuth 凭证。Windows 上 agy 的凭据实际存放在机器级 Credential Manager（`gemini:antigravity`），插件因此以「身份级引用计数租约」接管该槽：**同一授权的多个会话并行运行**，只有账号**身份切换**才串行，且由最后一个持有者还原主账号凭据。
-3. **多 Bucket 官方配额汇总**：插件定时后台静默轮询官方 `v1internal:retrieveUserQuotaSummary`，精准掌控每个账号的 5h 滚动削峰水位、7d 账号阶梯周额度，以及付费账号的 Argon 独立周池。
-4. **会话级无缝故障转移**：当遭遇 HTTP 429、额度耗尽或凭证异常时，号池调度器自动标记当前账号家族进入冷却（或按额度到期时间择优轮换），并无缝将后续请求路由到池内下一个有效账号。
-5. **失败分类与自愈**：错误按 AUTH / NETWORK / RATE_LIMIT / ELIGIBILITY 等精确分类；网络抖动借由 agy 运行日志自动甄别为可重试故障，绝不误伤健康账号的登录状态。
-
----
-
-## ❓ 常见问题排查 (FAQ)
-
-### Windows 平台开始对话时为什么会短暂闪一下黑色命令行窗口（黑框）？
-**答：这是 Windows 系统的控制台分配机制，完全良性，不会影响对话和模型功能。**
-- **原因分析**：DSH 是基于 Electron 的图形桌面应用（GUI 进程），每次发起对话时，插件需要调用底层命令校验并同步当前账号在 Windows 凭据管理器（Credential Manager）中的 OAuth Token，随后启动 `agy.exe` 控制台子进程建立流式通信。在 Windows 11 下，系统默认终端若被设为「Windows 终端 (Windows Terminal)」，Windows Terminal 会拦截后台控制台子进程的句柄分配并闪现弹窗（这是 Windows Terminal 已知的 OpenConsole 委托拦截机制）。
-- **解决步骤**：
-  1. 打开 **Windows 终端 (Windows Terminal)** 的「设置」→「启动」（或进入 Windows「设置」→「系统」→「开发者选项」）。
-  2. 将 **默认终端应用程序 (Default terminal application)** 从「让 Windows 决定」或「Windows 终端」更改为 **「Windows 控制台主机 (Windows Console Host)」**。
-  3. 点击右下角 **保存 (Save)**。
-  4. **完全退出并重启 DSH**（使新启动的主进程应用更新后的控制台委托注册表），黑框闪烁即可彻底消除。
-
-### agy 自己的自动更新子进程也会闪窗（0.4.66 修复）
-除了上面那种控制台委托导致的闪窗，`agy` **自己**还会在距上次更新检查满 15 分钟后派生一条 `--bg-updater` → `agy --version` 的子进程链，**这条链由 agy 内部创建，会自行分配可见控制台**，父进程的 `windowsHide` 和 `AGY_CLI_DISABLE_AUTO_UPDATE=1` 都来不及生效（这就是 Issue #49 实测确认的结论）。
-
-0.4.66 起的处理方式：每次 spawn agy 之前，插件把 agy 更新检查的 fast-path 时间戳（`<agy home>/last_check.timestamp`）刷新为当前时间。agy 的检查逻辑是「距上次检查 < 15 分钟就直接跳过且不派生子进程」，于是这条可见窗口链根本不会被创建——对话、冷启动探测、模型选择器刷新、登录探测全部覆盖。
-
-- **代价**：插件所使用的那个 agy home 不再自动检查更新；手动 `agy update` 完全不受影响。
-- **开关**：`suppressAgyAutoUpdate`（环境变量 `DSH_AGY_SUPPRESS_AUTOUPDATE`）。Windows 上默认开启，其他平台默认关闭；设为 `false` 即回到 agy 原本的自动更新行为。
-- **旧版本用户的手动 workaround**：把 `%USERPROFILE%\.gemini\antigravity-cli\updater\update.lock` 设为只读（`attrib +R ...`），agy 拿不到更新锁就会跳过检查。代价是手动 `agy update` 会报 `update already in progress`，需要先 `attrib -R`。
-
+1. **短生命周期进程驱动**：每一轮对话启动一个独立官方 `agy -p --output-format stream-json` 进程，解析 NDJSON 事件流。
+2. **工具镜像**：agy 在自己 loop 里执行的每一步以 `agy_tool` 之名回传，DSH 把它重放成原生卡片——这是「路线自带 loop」与「宿主工具循环」之间唯一的通道。
+3. **回环 MCP 桥**：插件在本机起一个带 token 的 MCP server，把调用方 agent scope 可见的工具写进 agy 的全局注册表；`/tools` 与 `/call` 共用同一个 `callerFor()` 解析 `X-DSH-Session`。
+4. **多账号沙箱**：备用账号在 `~/.dsh/agy-accounts/<id>` 下建独立 HOME。Windows 凭据实际存放在机器级 Credential Manager（`gemini:antigravity`），插件以「身份级引用计数租约」接管：同一授权多会话并行，仅身份切换串行。
+5. **失败分类与自愈**：错误按 AUTH / NETWORK / RATE_LIMIT / ELIGIBILITY 分类；网络抖动借 agy 运行日志甄别为可重试，不误伤健康账号登录态。
 
 ---
 
-## 🙏 参考与致谢
+## 排障
 
+| 现象 | 原因 / 处理 |
+| --- | --- |
+| 工具表里有工具，但整轮零 `tool/call` | 调用方天花板没有 `agy_tool`；日志里有 `no-tool-transport` 警告 |
+| 列表为空、或没有 `fusion_*` | 请求未携带/未解析到 `X-DSH-Session`；或 allowlist 写成了 MCP 重写名 |
+| `a tool required the "mcp" permission …` | `permissionMode` 不是 `skip`，headless 下无法弹窗授权 |
+| 配了但 agy 完全看不到 MCP server | `mcpConfigScope` 写成了 `workspace`（agy 1.4+ 只读全局） |
+| `denied: not in allowlist` | 白名单写的是 MCP 名而非原始 DSH 名 |
+| 升级后账号/覆盖项不见了 | 检查 `~/.dsh/agy-worker`；若同名目录已存在，旧 `~/.dsh/agy-link` 会被保留而不是覆盖 |
+
+### Windows 开始对话时闪一下黑框
+
+**这是 Windows 控制台分配机制，完全良性。** DSH 是 Electron GUI 进程，每轮需要启动 `agy.exe` 控制台子进程；Windows 11 下若默认终端是「Windows 终端」，它会拦截后台控制台句柄并闪窗。
+
+1. 打开 **Windows 终端 → 设置 → 启动**（或 Windows「设置 → 系统 → 开发者选项」）→ **默认终端应用程序** 改为 **「Windows 控制台主机」**。
+2. 保存后**完全退出并重启 DSH**。
+
+`agy` 自己的 `--bg-updater` 子进程链也会闪窗（0.4.66 起已处理）：它在距上次更新检查满 15 分钟后自行派生子进程，父进程的 `windowsHide` 来不及生效。插件在每次 spawn 前刷新 agy 的 fast-path 时间戳，这条链就不会被创建。代价是该 agy home 不再自动检查更新，手动 `agy update` 不受影响；开关为 `suppressAgyAutoUpdate`。
+
+---
+
+## 上游、致谢与许可
+
+- 上游仓库：[`amlyczz/dsh-agy-link`](https://github.com/amlyczz/dsh-agy-link) —— 本 fork 的全部基础能力来自这里，问题与改进请优先向上游反馈
 - [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) — Antigravity 公开 OAuth 客户端与回环回调登录范式
 - [opencode-antigravity-auth](https://github.com/NoeFabris/opencode-antigravity-auth) — opencode 平台的多账号实践
 - [OmniRoute](https://github.com/diegosouzapw/OmniRoute) — Antigravity 端点分发与配额语义
 - [pi-mono](https://github.com/badlogic/pi-mono) — Antigravity 轮换与桥接设计参考
 
----
-
-## ⚠️ 免责声明
-
-本插件仅通过调用用户本地官方安装的未修改 `agy` CLI 进程进行交互。使用本插件需遵循 Google Antigravity 服务条款。
-
-## 许可证
+⚠️ 本插件仅调用用户本地官方安装的未修改 `agy` CLI 进程，使用需遵循 Google Antigravity 服务条款。
 
 MIT License.
 
@@ -211,188 +267,176 @@ MIT License.
 
 # English
 
-Bring **Google Antigravity models into DeepSeek Harness (DSH)** — featuring **Multi-Account Pooling & Automatic Rotation**, **Official Multi-Bucket Quota Tracking (5h Rolling + 7d Weekly + Argon Weekly Pool)**, **Zero-Paste In-GUI OAuth Login**, and **Theme-Adaptive High-Contrast UI**, powered by the official unmodified `agy` CLI.
+## What this repository is
 
-<p align="center">
-  <img src="./docs/assets/dashboard.png" alt="Antigravity Management Console - Multi-Account Pool & Quota Monitor" width="460" />
-  &nbsp;&nbsp;
-  <img src="./docs/assets/model-picker.png" alt="Antigravity Model Lineup in DSH Model Picker" width="220" />
-</p>
-<p align="center">
-  <img src="./docs/assets/token-usage.png" alt="Native Context Caching & Token Usage Breakdown" width="340" />
-  &nbsp;&nbsp;
-  <img src="./docs/assets/context-metering.png" alt="Accurate 1M Context Window Metering" width="340" />
-</p>
+`dsh-agy-worker` is a **fork** of [`amlyczz/dsh-agy-link`](https://github.com/amlyczz/dsh-agy-link). Upstream brings Google Antigravity models into DeepSeek Harness (DSH) — multi-account pooling, quota tracking, in-GUI OAuth, streaming and thinking mapping. This fork keeps all of it.
+
+It changes one thing: **making agy usable as a caller-driven Worker**, so that [`dsh-fusion`](https://github.com/SQDR2/dsh-fusion) can pick **agy (Gemini / Claude / GPT-OSS) as its Sidekick** and have a delegation actually complete and report back — instead of stalling on "the tool is in the table, but it is never called".
+
+> Upstream `dsh-agy-link` keeps its own name, npm package and repository. This is an independent line: package `dsh-agy-worker`, route prefix `/plugins/agy-worker/*`, state directory `~/.dsh/agy-worker`.
 
 ---
 
-> 🚨 **【Important: System Proxy / VPN / TUN Mode Required in Restricted Regions】**
->
-> Google Antigravity services and Google OAuth require access to Google servers (`oauth2.googleapis.com`, `cloudcode-pa.googleapis.com`, etc.).
->
-> 1. **Recommended**: Enable **TUN mode / System Proxy** in your VPN or proxy client (Clash, Surge, Sing-box, etc.) so that all terminal commands, Node.js background processes, and browser calls route through your proxy.
-> 2. **Terminal Proxy Export**: If your terminal does not inherit proxy automatically, export the environment variables before starting DSH:
->    ```bash
->    export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890 ALL_PROXY=socks5://127.0.0.1:7890
->    ```
-> 3. **Per-Account Dedicated Proxy**: You can also configure a dedicated proxy URL per account directly in DSH Settings → Antigravity by clicking the "🌐 Proxy" button on the account card (e.g. `http://127.0.0.1:7890`).
+## Why the fork exists
+
+Fusion's Sidekick is a caller-driven tool loop: DSH advertises the Worker's tool surface (`workerTools` plus `fusion_*`) and expects the model to **call** those tools. agy is a provider route with its own agent loop — it never returns a plain `bash` call; it reports that step back under **its own transport name**.
+
+Three conditions must hold at once. Upstream was missing two of them, and both failed silently:
+
+| Condition | Role | Symptom when missing | This fork |
+| --- | --- | --- | --- |
+| `mcpBridge: true` | agy can **execute** DSH tools | tools are advertised but unreachable | on by default |
+| `agy_tool` in the caller's ceiling | agy's **return channel** | the adapter has no tool-call block to emit → the turn degrades to prose and the host reports `WORKER_TOOLS_UNREACHABLE` | logs a `no-tool-transport` warning naming the caller-side switch |
+| `permissionMode: 'skip'` | lets an MCP call **through** | agy auto-denies: `a tool required the "mcp" permission that headless mode cannot prompt for` | `/agy status` names it |
+| `/tools` listed for the caller's scope | `fusion_*` is **visible** | the catalog never contains `fusion_*`, and no allowlist value can compensate | fixed |
+
+The last one is the root cause: `fusion_*` is **not** registered globally but on the Agent's own scope (`agent.ctx.tools.register`). The bridge's `/tools` called `svc.schemas()` without a scope, and DSH resolves an omitted scope to the **global layer only**. The allowlist filters *after* listing, so no allowlist value could ever bring them back.
 
 ---
 
-## 🌟 Core Feature: Multi-Account Pool & Smart Rotation
+## Changes against upstream
 
-Have multiple Google Antigravity / Gemini accounts? **dsh-agy-link makes multi-account orchestration seamless and automated**:
-
-- 👥 **Multi-Account Pooling**: Manage unlimited Google accounts (Primary + Secondary pool) with fully isolated HOME sandbox environments and credentials.
-- 🔄 **Sequential Drain Failover**: When an account reaches its rate limits (429) or runs out of 5h/weekly quotas, requests **automatically and smoothly fail over to the next available account** without interrupting your conversation!
-- 🕰 **Quota-Expiry-First Rotation**: With several accounts available, the scheduler prefers the one whose **reset window expires soonest**, maximizing utilization across the whole pool.
-- 🧠 **Jitter-Safe Auth Classification**: A keyring-auth timeout caused by proxy jitter is recognized as a **retryable network error**, not a sign-out — classified from the `keyringAuth` transport evidence in agy's own run log, and sticky "needs re-login" quarantine requires a second confirmation, so healthy accounts are never falsely flagged.
-- 📊 **Official Multi-Bucket Quota Tracking**: Direct integration with Antigravity's official `v1internal:retrieveUserQuotaSummary` endpoint, providing real-time visibility for the **5-Hour Rolling Limit**, the **7-Day Weekly Limit**, and the **Gemini 4 Argon weekly pool** (paid Pro/Ultra accounts, billed separately from the plain Gemini pool).
-- 🔀 **Manual Switch-Active**: One click on "Set active" pins the scheduler pointer to the account you choose.
-- 🔑 **In-GUI Zero-Paste OAuth**: One-click "Add Account" opens your browser and automatically captures OAuth tokens via local loopback — **no copying and pasting of authorization codes required**.
-- 🎨 **Theme-Adaptive High-Contrast UI**: Seamlessly adapts to Light and Dark DSH themes with crystal clear typography and crisp contrast.
-- 🌐 **Per-Account Proxy**: Configure dedicated HTTP(S) / SOCKS proxy for each individual account to isolate IP addresses; when unset, the system proxy is auto-detected (macOS `scutil` / Windows registry / Linux gsettings).
-- ⚡ **Family-Scoped Cooldowns**: Gemini, Claude, GPT-OSS, and Argon rate limits are calculated independently, preventing one exhausted model from blocking others.
-
----
-
-## ✨ Features Overview
-
-| Feature | Description |
+| Commit | What it does |
 | --- | --- |
-| 🎨 **Official Vector Logo** | Clean 36×36 retina vector mark (`assets/icon.svg`) with transparent background; dynamically replaces fallback gear in DSH Settings sidebar (`[role="dialog"] nav`) |
-| 🧩 **Unified Settings & Plugin Console** | Embedded Antigravity console directly in DSH Plugins settings; configure account pool, quotas, and proxies in one place while keeping list cards clean |
-| 🚀 **Secondary Account Parallel Leases** | Windows credential slot allows concurrent sessions on the same account to share leases without queue starvation; serializes only for cross-account switches |
-| ⚡ **Native Context Caching & Token Metering** | Native Google Gemini Prompt Caching (`cache_read_tokens`) forwarding; accurate cache read tracking and real prompt occupancy across 1M context windows |
-| 👥 **Multi-Account Pool** | Primary + unlimited spare accounts with automatic Sequential Drain rotation upon rate limits; quota-expiry-first scheduling |
-| 🧠 **Jitter-Safe Auth** | Distinguishes network jitter from a real sign-out via keyring transport evidence in agy's run log; sticky quarantine requires confirmation — no false "needs re-login" flags |
-| 📊 **Multi-Bucket Quota HUD** | Real-time progress bars for the **5h rolling**, **7d weekly**, and **Argon weekly** (paid Pro/Ultra) pools with exact reset countdowns |
-| 🔑 **Zero-Paste Browser Login** | Automatic browser-based Google OAuth login with loopback callback handler |
-| 🔀 **Manual Switch-Active** | Pin the scheduler to any account from the console; the header badge always names the server-scheduled account |
-| 🎨 **Theme-Adaptive UI** | Dynamic light/dark theme switching, pure SVG vector marks (no emojis), high contrast |
-| 🌐 **Per-Account Proxy** | Dedicated HTTP(S) proxy per account slot, or auto-detected system proxy |
-| 🔌 **Native Model Routing** | Registers `antigravity` provider in DSH; choose Gemini / Claude / GPT-OSS / Argon in `/model` picker |
-| 🌊 **Full Streaming Protocol** | Native streaming for text, thinking turn annotations, and tool calls |
-| 🃏 **Native Tool UI Cards** | Command runs and inline diffs render as clean, native DSH tool cards |
-| 🔗 **Session Continuity** | Binds DSH sessions to native agy conversations (`--conversation`) for zero-redundancy context |
-| 🎯 **DSH Goal & Plan Integration** | Long-running tasks carry DSH goal / plan context across tool continuations |
-| 📊 **Accurate Token Metering** | Input, output, thinking, and cacheRead tokens are fully reported to DSH with 1M context support |
-| 🎛 **Top Header Console Badge** | Click the `AGY (n)` badge in the header to instantly open the management console |
-| 🖼 **Multimodal Images** | Stages images to local storage and passes safe absolute paths via `--add-dir` |
-| 🤝 **`agy_ask` Delegation** | Allows other DSH models to delegate subtasks to Antigravity models |
-| ⌨️ **`/agy` Commands** | Full command suite: `status`, `pool`, `auth`, `models`, `mode`, `effort`, `workspace`, `goal`, `session`, `enable-account`, `disable-account`, `clear`, `doctor`, `help` |
+| `fix(mcp-bridge): scope /tools to the calling agent` | `/tools` resolves `X-DSH-Session` through the same `callerFor()` as `/call` and calls `schemas(agent)`. Both session-key shapes (top-level `session-<uuid>`, bare `<uuid>` for sub-agents) resolve as given first, retrying with the `session-` prefix only when that finds nothing |
+| `feat(host): enable the MCP bridge by default and report unreachable tool tables` | `mcpBridge` defaults to `true` (`mcpBridge: false` / `DSH_AGY_MCP_BRIDGE=0` still opt out); a ceiling without `agy_tool` now logs one actionable `no-tool-transport` warning per session instead of degrading silently; `/agy status` reports bridge state, bridged tool set and the `permissionMode` requirement |
+| `feat(client): move the Antigravity console to a left-sidebar panel` | The console moves from Settings → gear to a first-class left-sidebar panel (`sidebar.panellist` + `main` page), reusing the identical `AgySettingsSection` |
+| `feat(client): place the sidebar entry directly below 自动化任务` | `sidebar.panellist` order drops from `100` to `20`, so the entry sits directly below DSH's 自动化任务 panel (`order: 10`) and above the 更多 / More launcher |
+
+The fork also renames throughout: package `dsh-agy-worker`, internal id `agy-worker`, routes `/plugins/agy-worker/*`. The legacy state directory `~/.dsh/agy-link` is **migrated automatically** on first start (runtime overrides, session map, media cache, warmup history); an existing `agy-worker` directory is never overwritten. The account pool at `~/.dsh/agy-accounts` is untouched — **existing logins need no re-authentication**.
 
 ---
 
-## 📋 Prerequisites
+## Using it with dsh-fusion
 
-| Requirement | Details |
-| --- | --- |
-| **1. System Proxy / VPN** | **【Required in restricted regions】** (TUN mode or `HTTPS_PROXY` environment variable to ensure Google endpoints are reachable) |
-| **2. DeepSeek Harness (DSH)** | Your current DSH environment (`dsh --version`) |
-| **3. Node.js ≥ 24** | Required runtime (`node --version`) |
-| **4. Google Antigravity `agy` CLI** | Installed per [Google's official guide](https://antigravity.google/docs/cli/install). Verified with `agy --version` |
+1. **Pick agy as the Sidekick.** Open the **Fusion** entry in the left sidebar and choose an Antigravity model as Sidekick; keep a frontier model as Lead.
+2. **Keep the return channel in the Worker's ceiling.** `agy_tool` is agy's only return channel. Current `dsh-fusion` adds it automatically via `withRouteTransport()` once the `antigravity` route is registered; on older versions add it by hand:
+
+   ```yaml
+   - id: dsh-model-fusion
+     config:
+       workerTools: [bash, read, write, edit, glob, grep, job_output, job_kill, agy_tool]
+   ```
+
+   The adapter never invents the tool — emitting `agy_tool` when the host never registered it would be rejected as `unknown tool "agy_tool"` — so it stops cutting spans on tool steps instead and logs `no-tool-transport`.
+
+3. **Set `permissionMode: skip`.** No config flag implies this: in print mode agy auto-denies an MCP call unless it may auto-approve it. `accept-edits`, `auto` and `plan` all abort the turn (verified against agy 1.4.12). Alternatively add an `mcp(<target>)` rule under `permissions.allow`.
+
+4. **Narrow the bridge allowlist.** It is both the execution gate (`/call` returns 403 outside the list) and the only constraint against a prompt-injected agy subprocess:
+
+   ```yaml
+   mcpBridge: true
+   mcpConfigScope: global
+   mcpToolAllowlist: "fusion_submit_result,fusion_read_state,fusion_read_evidence,bash,read,write,edit,glob,grep,job_output,job_kill"
+   ```
+
+   Use `pwsh` instead of `bash` on Windows. Keep `mcpConfigScope: global` — agy 1.4+ reads only the global registry, so `workspace` is a silent no-op.
+
+Full configuration surface, verification steps and a troubleshooting matrix: **[docs/MCP-BRIDGE-SETUP.md](./docs/MCP-BRIDGE-SETUP.md)**.
 
 ---
 
-## 🚀 Quick Start
+## Install
+
+> 🚨 **System proxy / TUN mode is required.** Antigravity services and OAuth need to reach `oauth2.googleapis.com`, `cloudcode-pa.googleapis.com`, etc. Prefer TUN mode in Clash / Surge / v2rayA / Sing-box; if your terminal does not inherit the proxy, export before starting DSH:
+>
+> ```bash
+> export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890 ALL_PROXY=socks5://127.0.0.1:7890
+> ```
+>
+> A per-account proxy can also be set from the account card (🌐 Proxy).
 
 ```bash
-# 0. Ensure System Proxy / TUN mode is active (required for Google connectivity):
-export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890
+# From GitHub (pnpm runs the prepare script and builds for you)
+dsh plugin --profile web add github:SQDR2/dsh-agy-worker
 
-# 1. Install plugin:
-dsh plugin --profile web add dsh-agy-link
+# Or from a local clone
+git clone https://github.com/SQDR2/dsh-agy-worker.git ~/github/dsh-agy-worker
+cd ~/github/dsh-agy-worker && npm ci && npm run build && cd -
+dsh plugin --profile web add ~/github/dsh-agy-worker
 
-# Upgrade to latest:
-# dsh plugin --profile web add dsh-agy-link@latest --registry https://registry.npmjs.org
-
-# 2. Start DSH Web GUI, test status:
-#   /agy status
-
-# 3. Add accounts:
-#   Click "AGY (n)" badge in the top header, click "➕ Add Account" and complete browser login.
-
-# 4. Select an Antigravity model in /model and start chatting!
+dsh web
 ```
 
+Then, in the composer:
+
+```bash
+/agy status            # plugin, agy version, bridge state, quotas
+/agy auth              # sign in the primary account (or use the AGY badge → ➕ Add Account)
+```
+
+Finally pick an Antigravity model in `/model`.
+
 ---
 
-## ⚙️ Configuration
+## Features
 
-| Key | Environment Variable | Default | Description |
+- **Multi-account pool with rotation** — primary plus unlimited spares; smooth failover on 429 / quota exhaustion; quota-expiry-first scheduling
+- **Official multi-bucket quotas** — 5h rolling, 7d weekly and the Argon weekly pool (paid Pro/Ultra), with reset countdowns
+- **Zero-paste in-GUI OAuth** — loopback callback capture, no authorization codes to copy
+- **Native model routing** — registers the `antigravity` provider; Gemini / Claude / GPT-OSS / Argon in `/model`
+- **Lossless streaming** — text, thinking turns and tool activity mapped to DSH's native stream protocol
+- **Native tool cards** — terminal runs and inline diffs render as DSH cards; MCP meta-tools are unwrapped into terminal / search cards
+- **Session continuity** — DSH sessions bind to agy conversations (`--conversation`); only the delta is sent per turn
+- **Native context caching metering** — `cache_read_tokens` mapped end to end, 1M-window aware
+- **Jitter-safe auth** — keyring transport evidence separates proxy jitter from a real sign-out
+- **Family-scoped cooldowns** — Gemini / Claude / GPT-OSS / Argon limits are independent
+- **Per-account proxy** — dedicated HTTP(S) / SOCKS egress, or auto-detected system proxy
+- **Parallel secondary leases** — concurrent sessions on one account share a lease; only identity switches serialize
+- **Goal & plan integration** — long tasks carry DSH goal / plan context across tool continuations
+- **Multimodal images** — staged to disk and passed to agy via `--add-dir`
+- **`agy_ask` delegation** — any DSH model can delegate a single task to an Antigravity model
+- **Sidebar console** — left-sidebar entry (below 自动化任务) plus the header `AGY (n)` badge
+- **`/agy` commands** — `status`, `pool`, `auth`, `models`, `mode`, `effort`, `workspace`, `goal`, `session`, `enable-account`, `disable-account`, `clear`, `doctor`, `help`
+
+---
+
+## Configuration
+
+| Key | Environment variable | Default | Description |
 | --- | --- | --- | --- |
 | `enabled` | `DSH_AGY_ENABLED` | `true` | Master switch |
-| `agyBin` | `DSH_AGY_BIN` | auto-detected | Path to `agy` binary |
-| `permissionMode` | `DSH_AGY_MODE` | `skip` | `skip` (unattended execution) / `plan` / `accept-edits` |
+| `agyBin` | `DSH_AGY_BIN` | auto-detected | Path to the `agy` binary |
+| `permissionMode` | `DSH_AGY_MODE` | `skip` | `skip` / `plan` / `accept-edits`. **Must be `skip` for the Fusion scenario** |
+| `mcpBridge` | `DSH_AGY_MCP_BRIDGE` | `true` | Expose DSH tools to agy over the loopback MCP bridge |
+| `mcpToolAllowlist` | `DSH_AGY_MCP_TOOL_ALLOWLIST` | `''` | Comma-separated allowlist; empty = all non-internal. Matches the **original DSH name**, not the MCP-rewritten one |
+| `mcpConfigScope` | `DSH_AGY_MCP_CONFIG_SCOPE` | `global` | Which MCP registry to publish into; agy 1.4+ reads `global` only |
+| `mcpConfigPath` | `DSH_AGY_MCP_CONFIG_PATH` | `''` | Absolute override for the registry file |
 | `defaultModel` | `DSH_AGY_DEFAULT_MODEL` | `(agy default)` | Default model slug |
-| `defaultEffort` | `DSH_AGY_DEFAULT_EFFORT` | `(model default)` | Thinking budget: `low` / `medium` / `high` |
-| `hiddenModels` | `DSH_AGY_HIDDEN_MODELS` | `[]` | Model slugs hidden from the `/model` picker (deny-list, newly discovered models stay visible; manage them via the "Model visibility" row in the settings panel) |
-| `timeoutMs` | `DSH_AGY_TIMEOUT_MS` | `600000` | Activity watchdog timeout in milliseconds |
-| `longToolIdleMinutes` | `DSH_AGY_LONG_TOOL_IDLE_MINUTES` | `240` | Idle budget while a tool step is ACTIVE (minutes); `0` keeps the normal `timeoutMs` budget so wedged tools fail fast |
-| `workspaceRoot` | `DSH_AGY_WORKSPACE_ROOT` | session cwd | Working directory root |
-| `suppressAgyAutoUpdate` | `DSH_AGY_SUPPRESS_AUTOUPDATE` | `true` on Windows, `false` elsewhere | Refreshes agy's update-check timestamp before every spawn so its `--bg-updater` child chain (the Windows console-flash root cause) never starts. `false` restores agy's own auto-update checks |
-| `autoWarmup` | `DSH_AGY_AUTO_WARMUP` | `false` | Opt-in 7-day weekly quota warmup: sends a minimal probe when the weekly window has reset or is cold, activating the 7-day timer. Scans every 5 minutes; this path talks directly to Google's internal endpoints, so assess the risk-control tradeoff yourself |
-| `warmupModels` | `DSH_AGY_WARMUP_MODELS` | `gemini-3.8-flash,claude-sonnet-4-6` | Model list used for warmup probes (comma-separated); an empty list disables automatic warmup |
+| `defaultEffort` | `DSH_AGY_DEFAULT_EFFORT` | `(model default)` | `low` / `medium` / `high` |
+| `hiddenModels` | `DSH_AGY_HIDDEN_MODELS` | `[]` | Deny-list for the `/model` picker |
+| `timeoutMs` | `DSH_AGY_TIMEOUT_MS` | `600000` | Activity-watchdog timeout (ms) |
+| `longToolIdleMinutes` | `DSH_AGY_LONG_TOOL_IDLE_MINUTES` | `240` | Idle budget while a tool step is ACTIVE (minutes); `0` keeps the normal budget |
+| `workspaceRoot` | `DSH_AGY_WORKSPACE_ROOT` | session cwd | agy workspace root |
+| `suppressAgyAutoUpdate` | `DSH_AGY_SUPPRESS_AUTOUPDATE` | `true` on Windows | Refreshes agy's update-check timestamp before every spawn |
+| `autoWarmup` | `DSH_AGY_AUTO_WARMUP` | `false` | Opt-in 7-day quota warmup; talks to Google's internal endpoints |
+| `warmupModels` | `DSH_AGY_WARMUP_MODELS` | `gemini-3.8-flash,claude-sonnet-4-6` | Warmup model list; empty disables warmup |
 
 ---
 
-## Headless operation
+## Troubleshooting
 
-See [Headless permissions](docs/HEADLESS-PERMISSIONS.md) for a bounded reproduction,
-least-privilege read-rule validation, and process-versus-tool acceptance checks.
+| Symptom | Cause / fix |
+| --- | --- |
+| Tools advertised, zero `tool/call` all turn | `agy_tool` missing from the caller's ceiling; look for a `no-tool-transport` warning |
+| Empty catalog, or no `fusion_*` | `X-DSH-Session` not carried / not resolved, or the allowlist uses the MCP-rewritten name |
+| `a tool required the "mcp" permission …` | `permissionMode` is not `skip` |
+| agy never sees the MCP server | `mcpConfigScope` set to `workspace` (agy 1.4+ reads global only) |
+| `denied: not in allowlist` | The allowlist holds the MCP name, not the original DSH name |
+| Accounts / overrides gone after the upgrade | Check `~/.dsh/agy-worker`; when that directory already exists, `~/.dsh/agy-link` is kept rather than merged |
 
-The plugin passes the selected permission mode to `agy`; it does not approve,
-deny, or bypass permissions itself. In headless/print operation, `agy` can
-automatically deny a tool request in `plan` or `accept-edits`. The raw tool
-error is retained in `/agy status`; it is not proof of a human denial.
-
-Do not assume undocumented wildcard semantics for either mode. Test the exact
-`agy` version and command set in a scoped workspace. Choose `skip` only when
-you explicitly accept unattended tool execution.
-
----
-
-## ❓ FAQ & Troubleshooting
-
-### Why does a black command prompt / terminal window briefly flash when starting a conversation on Windows?
-**A: This is a cosmetic behavior of the Windows Console subsystem and is completely harmless.**
-- **Root Cause**: DSH is an Electron desktop app (GUI process). Before each conversation turn, the plugin verifies/syncs Google credentials via the Windows Credential Manager and launches the `agy.exe` console child process for streaming. On Windows 11, if the system default terminal is set to "Windows Terminal", Windows Terminal intercepts the background console allocation and momentarily flashes an empty window (a known Windows Terminal OpenConsole delegation behavior).
-- **Solution**:
-  1. Open **Windows Terminal** → **Settings** → **Startup** (or Windows **Settings** → **System** → **For developers**).
-  2. Change **Default terminal application** from "Let Windows decide" or "Windows Terminal" to **"Windows Console Host"**.
-  3. Click **Save** in the bottom-right corner.
-  4. **Completely exit and restart DSH** so the running host process picks up the updated console delegation setting.
-
-### agy's own auto-updater also flashes a window (fixed in 0.4.66)
-On top of the console-delegation flash above, `agy` itself spawns a
-`--bg-updater` → `agy --version` child chain once its last update check is more
-than 15 minutes old. **That chain is created inside agy and allocates its own
-visible console**, so the parent's `windowsHide` and `AGY_CLI_DISABLE_AUTO_UPDATE=1`
-both apply too late — the exact conclusion of the measurements recorded in issue #49.
-
-Since 0.4.66 the plugin refreshes agy's fast-path timestamp
-(`<agy home>/last_check.timestamp`) right before every spawn. agy skips the
-check entirely when it is under 15 minutes old and spawns nothing, so the
-visible window chain never starts — for turns, boot probes, model-picker
-refreshes and login probes alike.
-
-- **Cost**: the agy home used by this plugin stops auto-checking for updates;
-  a manual `agy update` still works normally.
-- **Switch**: `suppressAgyAutoUpdate` (env `DSH_AGY_SUPPRESS_AUTOUPDATE`).
-  On by default on Windows, off elsewhere; set `false` to restore agy's own behaviour.
-- **Manual workaround on older versions**: make
-  `%USERPROFILE%\.gemini\antigravity-cli\updater\update.lock` read-only
-  (`attrib +R ...`). agy then fails to acquire the update lock and skips the
-  check — at the price of `agy update` reporting `update already in progress`
-  until you run `attrib -R`.
+On Windows, a brief console flash when a turn starts comes from console allocation, not from this plugin: set **Settings → System → For developers → Default terminal application** to **Windows Console Host**, then fully restart DSH. agy's own `--bg-updater` chain (handled since 0.4.66 via the update-check timestamp refresh, switch `suppressAgyAutoUpdate`) is the other known source.
 
 ---
 
-## ⚠️ Disclaimer
+## Upstream, credits and license
 
-This plugin operates strictly by invoking the official, unmodified `agy` CLI binary installed on your local system. Use of this plugin is subject to Google Antigravity's Terms of Service.
+- Upstream: [`amlyczz/dsh-agy-link`](https://github.com/amlyczz/dsh-agy-link) — every base capability comes from there; report general issues upstream first
+- [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) — Antigravity OAuth client and loopback callback patterns
+- [opencode-antigravity-auth](https://github.com/NoeFabris/opencode-antigravity-auth) — multi-account practice on opencode
+- [OmniRoute](https://github.com/diegosouzapw/OmniRoute) — Antigravity endpoint dispatch and quota semantics
+- [pi-mono](https://github.com/badlogic/pi-mono) — rotation and bridging reference
 
-## License
+⚠️ This plugin only invokes the official, unmodified `agy` CLI installed locally. Use is subject to Google Antigravity's Terms of Service.
 
 MIT License.

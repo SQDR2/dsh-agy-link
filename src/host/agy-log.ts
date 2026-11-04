@@ -1,4 +1,4 @@
-// agy per-run log access (dsh-agy-link).
+// agy per-run log access (dsh-agy-worker).
 //
 // agy writes one log per invocation under
 //   <home>/.gemini/antigravity-cli/log/cli-<YYYYMMDD_HHMMSS>.log

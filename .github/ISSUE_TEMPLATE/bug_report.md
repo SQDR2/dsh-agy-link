@@ -1,11 +1,11 @@
 ---
 name: Bug report
-about: Something is broken in the dsh-agy-link bridge
+about: Something is broken in the dsh-agy-worker bridge
 labels: bug
 ---
 
 **Environment**
-- dsh-agy-link version:
+- dsh-agy-worker version:
 - agy CLI version (`agy --version`):
 - DSH profile (web / other):
 - OS:

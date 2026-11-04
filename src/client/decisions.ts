@@ -1,6 +1,6 @@
 import { isInteractionLocked, onScrollSettle } from './scroll-guard.ts';
 
-// Interactive User Decision & Choice Quick-Actions for dsh-agy-link.
+// Interactive User Decision & Choice Quick-Actions for dsh-agy-worker.
 //
 // Detects decision sections and choice prompts in model responses (e.g.
 // "### 💬 请您拍板：", "### 💬 接下来请您指示：", "### 请选择：")
@@ -82,7 +82,7 @@ const DECISION_CSS = `
 
 function injectStyles(): void {
   if (typeof document === 'undefined') return;
-  const styleId = 'dsh-agy-link-decisions-css';
+  const styleId = 'dsh-agy-worker-decisions-css';
   if (document.getElementById(styleId) === null) {
     const st = document.createElement('style');
     st.id = styleId;

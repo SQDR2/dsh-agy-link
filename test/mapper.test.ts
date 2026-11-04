@@ -623,7 +623,7 @@ test('token-only steps AFTER visible text stay suppressed (no clutter regression
 })
 
 test('rewriteImageMarkdown rewrites file://, Windows, and WSL paths to mediaBaseUrl', () => {
-  const baseUrl = 'http://127.0.0.1:4000/plugins/agy-link/media'
+  const baseUrl = 'http://127.0.0.1:4000/plugins/agy-worker/media'
 
   // file:/// URL
   const input1 = 'Here: ![2D 原画](file:///D:/proj/tribal-era/docs/concept.png)'
@@ -645,7 +645,7 @@ test('rewriteImageMarkdown rewrites file://, Windows, and WSL paths to mediaBase
 })
 
 test('EventMapper with mediaBaseUrl streams rewritten image markdown in text steps', () => {
-  const baseUrl = 'http://127.0.0.1:5000/plugins/agy-link/media'
+  const baseUrl = 'http://127.0.0.1:5000/plugins/agy-worker/media'
   const m = new EventMapper({
     runId: 'r_img',
     cutOnTool: true,

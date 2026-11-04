@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest a dsh-agy-link improvement
+about: Suggest a dsh-agy-worker improvement
 labels: enhancement
 ---
 

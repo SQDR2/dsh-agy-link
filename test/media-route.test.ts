@@ -44,7 +44,7 @@ test('media-route: malformed percent-encoding in a file:// path is rejected, not
   assert.equal(resolveLocalMediaPath(bad), null, 'malformed escape resolves to null');
   let status = 0;
   const res = { writeHead(s: number) { status = s; }, end() {} };
-  const url = '/plugins/agy-link/media?path=' + encodeURIComponent(bad);
+  const url = '/plugins/agy-worker/media?path=' + encodeURIComponent(bad);
   assert.doesNotThrow(() => handleMediaRequest({ url }, res as never));
   assert.equal(status, 404);
 });
@@ -76,7 +76,7 @@ test('media-route: handleMediaRequest streams existing image and denies non-imag
     };
 
     handleMediaRequest(
-      { url: '/plugins/agy-link/media?path=' + encodeURIComponent(imgFile) },
+      { url: '/plugins/agy-worker/media?path=' + encodeURIComponent(imgFile) },
       mockRes as never,
     );
     assert.equal(status, 200);
@@ -91,7 +91,7 @@ test('media-route: handleMediaRequest streams existing image and denies non-imag
       end() {},
     };
     handleMediaRequest(
-      { url: '/plugins/agy-link/media?path=' + encodeURIComponent(txtFile) },
+      { url: '/plugins/agy-worker/media?path=' + encodeURIComponent(txtFile) },
       mockResDenied as never,
     );
     assert.equal(deniedStatus, 403);
@@ -103,7 +103,7 @@ test('media-route: handleMediaRequest streams existing image and denies non-imag
       end() {},
     };
     handleMediaRequest(
-      { url: '/plugins/agy-link/media?path=' + encodeURIComponent('missing.png') },
+      { url: '/plugins/agy-worker/media?path=' + encodeURIComponent('missing.png') },
       mockRes404 as never,
     );
     assert.equal(notFoundStatus, 404);
@@ -128,7 +128,7 @@ test('media-route: handleAssetRequest refuses a symlink that escapes the asset d
       emit() { return true; },
       write() { return true; },
     };
-    handleAssetRequest({ url: '/plugins/agy-link/assets/leak.txt' }, res as never, root);
+    handleAssetRequest({ url: '/plugins/agy-worker/assets/leak.txt' }, res as never, root);
     assert.notEqual(status, 200, 'must not serve a file outside the asset dir via symlink');
   } finally {
     try { rmSync(root, { recursive: true, force: true }); } catch { /* ignore */ }

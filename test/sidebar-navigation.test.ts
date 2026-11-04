@@ -65,12 +65,12 @@ test('sidebar contracts: registers sidebar.panellist and main, with NO settings.
   // 2. sidebar.panellist MUST be registered directly below 自动化任务 and above 更多 (order 20)
   const sidebarSlot = registeredSlots.find(s => s.name === 'sidebar.panellist')
   assert.ok(sidebarSlot, 'sidebar.panellist slot must be registered')
-  assert.equal(sidebarSlot.options.id, 'agy-link', 'sidebar entry id must be "agy-link"')
+  assert.equal(sidebarSlot.options.id, 'agy-worker', 'sidebar entry id must be "agy-worker"')
   assert.equal(typeof sidebarSlot.options.order, 'number')
   assert.ok((sidebarSlot.options.order as number) > 10, 'sidebar panel order must be placed below 自动化任务 (order > 10)')
   assert.ok((sidebarSlot.options.order as number) < 100, 'sidebar panel order must be less than 100')
   assert.equal(sidebarSlot.options.order, 20, 'order 20 places entry directly below 自动化任务 and above 更多')
-  assert.equal(sidebarSlot.options.locale, 'agy-link')
+  assert.equal(sidebarSlot.options.locale, 'agy-worker')
 
   const labelFn = sidebarSlot.options.label as () => string
   assert.equal(typeof labelFn, 'function')
@@ -88,11 +88,11 @@ test('sidebar contracts: registers sidebar.panellist and main, with NO settings.
   assert.equal(icon18.props?.width, 18)
   assert.equal(icon18.props?.height, 18)
 
-  // 3. main slot MUST be registered with key 'agy-link'
+  // 3. main slot MUST be registered with key 'agy-worker'
   const mainSlot = registeredSlots.find(s => s.name === 'main')
   assert.ok(mainSlot, 'main slot must be registered')
-  assert.equal(mainSlot.options.key, 'agy-link', 'main slot key must match sidebar entry id "agy-link"')
-  assert.equal(mainSlot.options.locale, 'agy-link')
+  assert.equal(mainSlot.options.key, 'agy-worker', 'main slot key must match sidebar entry id "agy-worker"')
+  assert.equal(mainSlot.options.locale, 'agy-worker')
   assert.equal(typeof mainSlot.component, 'function')
 
   // 4. Existing controls & plugins configuration slots are fully preserved
@@ -101,9 +101,9 @@ test('sidebar contracts: registers sidebar.panellist and main, with NO settings.
 
   const bundleConfig = registeredSlots.find(s => s.name === 'plugins.bundle.config')
   assert.ok(bundleConfig, 'plugins.bundle.config must be preserved')
-  assert.equal(bundleConfig.options.key, 'dsh-agy-link')
+  assert.equal(bundleConfig.options.key, 'dsh-agy-worker')
 
   const rowConfig = registeredSlots.find(s => s.name === 'plugins.row.config')
   assert.ok(rowConfig, 'plugins.row.config must be preserved')
-  assert.equal(rowConfig.options.key, 'dsh-agy-link#agy-link')
+  assert.equal(rowConfig.options.key, 'dsh-agy-worker#agy-worker')
 })

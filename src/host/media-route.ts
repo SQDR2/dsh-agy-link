@@ -1,4 +1,4 @@
-// Media and asset route handler for dsh-agy-link.
+// Media and asset route handler for dsh-agy-worker.
 // Serves local images referenced by Antigravity (file://, absolute paths, WSL paths, staged media)
 // and static plugin assets (e.g. mermaid.min.js) safely to DSH Desktop and Web clients.
 import { createReadStream, existsSync, realpathSync, statSync } from 'node:fs';
@@ -96,7 +96,7 @@ export interface HttpRequestLike {
 }
 
 /**
- * Handle GET /plugins/agy-link/media?path=...
+ * Handle GET /plugins/agy-worker/media?path=...
  */
 export function handleMediaRequest(
   req: HttpRequestLike,
@@ -170,7 +170,7 @@ export function handleMediaRequest(
 }
 
 /**
- * Handle static assets under /plugins/agy-link/assets/...
+ * Handle static assets under /plugins/agy-worker/assets/...
  */
 export function handleAssetRequest(
   req: HttpRequestLike,
@@ -181,7 +181,7 @@ export function handleAssetRequest(
   let subPath = '';
   try {
     const u = new URL(reqUrl, 'http://localhost');
-    subPath = u.pathname.replace(/^\/plugins\/agy-link\/assets\/?/, '');
+    subPath = u.pathname.replace(/^\/plugins\/agy-worker\/assets\/?/, '');
   } catch {
     res.writeHead(400, { 'Content-Type': 'text/plain' });
     res.end('invalid url');

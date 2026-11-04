@@ -1,7 +1,7 @@
 // Bounded JSON body reader for the plugin's HTTP surfaces.
 //
 // Both the loopback MCP bridge (/call) and the plugin's web routes
-// (/plugins/agy-link/*) used to buffer an unbounded request body, so a local
+// (/plugins/agy-worker/*) used to buffer an unbounded request body, so a local
 // client — including a prompt-injected agy child holding the bridge token, or a
 // page able to POST to the plugin routes — could exhaust host memory by
 // streaming a huge body. This centralizes a size-capped reader so the limit and

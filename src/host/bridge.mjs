@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// dsh-agy-link MCP bridge script: a minimal stdio MCP server with zero
+// dsh-agy-worker MCP bridge script: a minimal stdio MCP server with zero
 // dependencies. agy launches it from its MCP registry; it forwards
 // tools/list and tools/call to the plugin loopback endpoint whose URL and
 // token arrive via env. DSH_MCP_SESSION carries the spawning DSH session so
@@ -73,7 +73,7 @@ function send(msg) {
 
 async function handle(id, method, params) {
   if (method === 'initialize') {
-    send({ jsonrpc: '2.0', id, result: { protocolVersion: PROTOCOL, capabilities: { tools: {} }, serverInfo: { name: 'dsh-agy-link-bridge', version: '0.2.0' } } })
+    send({ jsonrpc: '2.0', id, result: { protocolVersion: PROTOCOL, capabilities: { tools: {} }, serverInfo: { name: 'dsh-agy-worker-bridge', version: '0.2.0' } } })
     return;
   }
   if (method.startsWith('notifications/')) return;

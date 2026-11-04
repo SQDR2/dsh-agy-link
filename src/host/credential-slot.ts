@@ -1,4 +1,4 @@
-// Windows credential-slot handoff (dsh-agy-link).
+// Windows credential-slot handoff (dsh-agy-worker).
 //
 // WHY THIS MODULE EXISTS
 // ---------------------
@@ -415,10 +415,10 @@ export async function acquireCrossProcessSlotLock(
         if (typeof holderPid === 'number') {
           if (!isProcessAlive(holderPid)) {
             isStale = true
-            log(`[agy-link] removing stale slot lock from dead process ${holderPid} (instant self-heal)`)
+            log(`[agy-worker] removing stale slot lock from dead process ${holderPid} (instant self-heal)`)
           } else if (Date.now() - (parsed.acquiredAt || 0) > SLOT_LOCK_STALE_MS) {
             isStale = true
-            log(`[agy-link] removing stale slot lock exceeding ${SLOT_LOCK_STALE_MS}ms timeout`)
+            log(`[agy-worker] removing stale slot lock exceeding ${SLOT_LOCK_STALE_MS}ms timeout`)
           }
         } else {
           isStale = true
@@ -668,25 +668,25 @@ export async function resolvePrimaryCredential(
     // token rotations, and would degrade the durable store back to an
     // unidentifiable document. Never adopt one.
     if (!parseCredentialDoc(candidate.raw)?.refreshToken) {
-      log(`[agy-link] primary credential candidate "${candidate.where}" has no refresh token — skipped`)
+      log(`[agy-worker] primary credential candidate "${candidate.where}" has no refresh token — skipped`)
       continue
     }
     const email = await io.identify(candidate.raw, options.proxyUrl)
     if (!email) continue
     if (expectedEmail && email !== expectedEmail) {
       log(
-        `[agy-link] primary credential candidate "${candidate.where}" belongs to ${email}, ` +
+        `[agy-worker] primary credential candidate "${candidate.where}" belongs to ${email}, ` +
           `expected ${expectedEmail} — skipped`,
       )
       continue
     }
     const cred: PrimaryCredential = { raw: candidate.raw, email, savedAt: Date.now() }
     writePrimaryCredential(cred, baseDir)
-    log(`[agy-link] adopted primary credential from ${candidate.where} <${email}>`)
+    log(`[agy-worker] adopted primary credential from ${candidate.where} <${email}>`)
     return cred
   }
 
-  log('[agy-link] could not verify a primary credential; slot handoff disabled to protect the system login')
+  log('[agy-worker] could not verify a primary credential; slot handoff disabled to protect the system login')
   return null
 }
 
@@ -719,7 +719,7 @@ export class SlotUnavailableError extends Error {
  */
 function installSlotOrThrow(io: SlotIo, raw: string, log: (msg: string) => void, label: string): void {
   if (io.writeSlot(raw)) return
-  log('[agy-link] credential slot write failed for ' + label + ' — retrying once')
+  log('[agy-worker] credential slot write failed for ' + label + ' — retrying once')
   if (io.writeSlot(raw)) return
   throw new SlotUnavailableError(
     'could not install the ' + label + ' credential into the Windows credential slot (the write was rejected) — ' +
@@ -733,7 +733,7 @@ function installSlotBestEffort(io: SlotIo, raw: string, log: (msg: string) => vo
     installSlotOrThrow(io, raw, log, label)
   } catch (err) {
     log(
-      '[agy-link] WARNING: could not restore the ' + label + ' credential into the slot (' +
+      '[agy-worker] WARNING: could not restore the ' + label + ' credential into the slot (' +
       (err instanceof Error ? err.message : String(err)) + ') — the next run re-installs it',
     )
   }
@@ -871,7 +871,7 @@ export function armSlotHandoff(opts: {
       // best effort — the lease is refcounted and its release is idempotent
     }
     if (reason !== 'first-event') {
-      log('[agy-link] credential slot handed back at ' + reason + ' (no first event yet)')
+      log('[agy-worker] credential slot handed back at ' + reason + ' (no first event yet)')
     }
   }
   timer = setTimeout(() => {
@@ -879,7 +879,7 @@ export function armSlotHandoff(opts: {
     if (done) return
     byTimeout = true
     log(
-      '[agy-link] credential slot held for ' + Math.round(timeoutMs / 1000) +
+      '[agy-worker] credential slot held for ' + Math.round(timeoutMs / 1000) +
       's without a first event — handing it back so other sessions are not blocked',
     )
     fire('timeout')
@@ -959,7 +959,7 @@ export async function acquireCredentialSlot(
     const stored = readPrimaryCredential(baseDir)
     if (stored && sameCredentialGrant(io.readSlot(), stored.raw)) {
       primaryFastRuns += 1
-      log('[agy-link] same-account fast path: slot already holds the primary credential — running without exclusivity')
+      log('[agy-worker] same-account fast path: slot already holds the primary credential — running without exclusivity')
       return {
         identity: stored.email,
         release: (): void => {
@@ -1016,7 +1016,7 @@ export async function acquireCredentialSlot(
 
   const immediate = joinInstalled()
   if (immediate) {
-    log("[agy-link] same-identity fast path: slot already holds this account's credential — running without exclusivity")
+    log("[agy-worker] same-identity fast path: slot already holds this account's credential — running without exclusivity")
     return immediate
   }
 
@@ -1083,7 +1083,7 @@ export async function acquireCredentialSlot(
     if (joinLease !== null) {
       const lease = joinLease
       releaseClaim()
-      log('[agy-link] queued run joined an installed same-identity slot lease — running in parallel')
+      log('[agy-worker] queued run joined an installed same-identity slot lease — running in parallel')
       return lease
     }
     releaseClaim()
@@ -1097,7 +1097,7 @@ export async function acquireCredentialSlot(
     joinLease = null
     releaseMutex()
     releaseClaim()
-    log('[agy-link] queued run joined an installed same-identity slot lease — running in parallel')
+    log('[agy-worker] queued run joined an installed same-identity slot lease — running in parallel')
     return lease
   }
   const releaseMutexSlot = releaseMutex
@@ -1159,7 +1159,7 @@ export async function acquireCredentialSlot(
     // -- Primary run (serialized: slot repair or parallel disabled) -------
     if (isPrimarySlot) {
       if (!sameCredentialGrant(io.readSlot(), primary.raw)) {
-        log('[agy-link] re-asserting the primary credential into the Windows credential slot')
+        log('[agy-worker] re-asserting the primary credential into the Windows credential slot')
         installSlotOrThrow(io, primary.raw, log, 'primary')
       }
       releaseLockFileNow()
@@ -1179,7 +1179,7 @@ export async function acquireCredentialSlot(
               }
             } else if (afterRaw) {
               // Something replaced the primary mid-run. Put it back.
-              log('[agy-link] credential slot changed during a primary run — restoring the primary credential')
+              log('[agy-worker] credential slot changed during a primary run — restoring the primary credential')
               installSlotBestEffort(io, primary.raw, log, 'primary')
               writePrimaryCredential(primary, baseDir)
             }
@@ -1199,7 +1199,7 @@ export async function acquireCredentialSlot(
       const deadline = options.dispatchTimeoutMs !== undefined && options.dispatchTimeoutMs > 0
         ? Date.now() + options.dispatchTimeoutMs
         : 0
-      log(`[agy-link] waiting for ${primaryFastRuns} same-account run(s) to finish before switching the credential slot to ${account.alias || account.id}`)
+      log(`[agy-worker] waiting for ${primaryFastRuns} same-account run(s) to finish before switching the credential slot to ${account.alias || account.id}`)
       while (primaryFastRuns > 0) {
         if (options.signal?.aborted) {
           throw new AbortedWaitError('aborted while waiting for same-account runs to finish')
@@ -1264,7 +1264,7 @@ export async function acquireCredentialSlot(
             // would copy a FOREIGN credential into this account's file — the
             // exact bug that destroyed this pool. Leave the file untouched.
             log(
-              `[agy-link] credential slot was replaced during ${account.alias || account.id}'s run — ` +
+              `[agy-worker] credential slot was replaced during ${account.alias || account.id}'s run — ` +
                 'refusing to write a foreign credential into the account file',
             )
           }

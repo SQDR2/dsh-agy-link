@@ -1,6 +1,6 @@
 import { isInteractionLocked, onScrollSettle } from './scroll-guard.ts';
 
-// Client-side reasoning presentation (dsh-agy-link).
+// Client-side reasoning presentation (dsh-agy-worker).
 //
 // DSH web renders assistant reasoning as <div data-variant="think"> rows,
 // default collapsed. We must NOT rewrite React-managed thinkBody DOM:
@@ -69,7 +69,7 @@ div[data-variant="think"] [class*="thinkBody"] {
 
 function injectStyles(): void {
 	if (typeof document === 'undefined') return;
-	const styleId = 'dsh-agy-link-reasoning-css';
+	const styleId = 'dsh-agy-worker-reasoning-css';
 	if (document.getElementById(styleId) === null) {
 		const st = document.createElement('style');
 		st.id = styleId;

@@ -38,7 +38,7 @@ test('writeDoctorReport writes the report with 0600 permissions', () => {
 test('writeDoctorReport tightens an existing world-readable diagnostics dir to 0700', () => {
   if (process.platform === 'win32') return
   withHome((home) => {
-    const dir = join(home, 'agy-link', 'diagnostics')
+    const dir = join(home, 'agy-worker', 'diagnostics')
     mkdirSync(dir, { recursive: true, mode: 0o755 })
     chmodSync(dir, 0o755)
     writeDoctorReport(deps)

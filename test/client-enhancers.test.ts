@@ -24,6 +24,6 @@ test('isImageFile accurately detects image extensions ignoring queries and fragm
 
 test('buildMediaUrl encodes target path and preserves origin', () => {
   const url = buildMediaUrl('file:///D:/proj/tribal-era/test.png');
-  assert.ok(url.includes('/plugins/agy-link/media?path='));
+  assert.ok(url.includes('/plugins/agy-worker/media?path='));
   assert.ok(url.includes('file%3A%2F%2F%2FD%3A%2Fproj%2Ftribal-era%2Ftest.png'));
 });

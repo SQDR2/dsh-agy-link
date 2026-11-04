@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.103 (2026-11-04)
+
+### English
+
+- **The fork is now `dsh-agy-worker` — renamed everywhere, with an automatic state-directory migration.**
+  - Package name `dsh-agy-link` → `dsh-agy-worker`, plugin entry id `agy-link` → `agy-worker`, every host route `/plugins/agy-link/*` → `/plugins/agy-worker/*`, locale namespace and sidebar slot id likewise. Repository and local folder renamed to match.
+  - The state directory moves from `<dsh home>/agy-link` to `<dsh home>/agy-worker`. `stateDir()` adopts the legacy directory once, so runtime overrides, the session map, the media cache and the warmup history survive the upgrade. The move is skipped when the new directory already exists (live state is never overwritten) and is best-effort: a rename failure falls back to a copy, and a copy failure starts from an empty directory.
+  - The account pool at `<dsh home>/agy-accounts` is deliberately unchanged, so existing logins need no re-authentication.
+  - `README.md` was rewritten around what this fork actually is: the `caller-driven Worker` contract (bridge on by default, `agy_tool` as the return channel, `permissionMode: skip`, `/tools` scoped to the calling agent) and its use with `dsh-fusion` as the Sidekick. `docs/README.en.md` follows; the es / pt-BR files carry a banner pointing at the authoritative versions.
+  - Upstream `package.json` `repository` / `bugs` / `homepage` URLs pointed at `amlyczz/dsh-agy-link`; they now point at this fork.
+
+### 中文
+
+- **本 fork 更名为 `dsh-agy-worker`——全量改名，并附带数据目录自动迁移。**
+  - 包名 `dsh-agy-link` → `dsh-agy-worker`，插件条目 id `agy-link` → `agy-worker`，全部宿主路由 `/plugins/agy-link/*` → `/plugins/agy-worker/*`，locale 命名空间与侧边栏 slot id 同步更换；仓库与本地目录一并改名。
+  - 数据目录从 `<dsh home>/agy-link` 迁到 `<dsh home>/agy-worker`。`stateDir()` 会一次性接管旧目录，运行期覆盖项、会话映射、媒体缓存与预热历史全部保留。新目录已存在时**跳过**迁移（绝不覆盖在线状态）；整个过程尽力而为：重命名失败回退为复制，复制失败则从空目录开始。
+  - 账号池目录 `<dsh home>/agy-accounts` **刻意保持不变**，已登录账号无需重新登录。
+  - `README.md` 按本 fork 的真实增量重写：讲清「由调用方驱动的 Worker」这套契约（桥接默认开启、`agy_tool` 回传通道、`permissionMode: skip`、`/tools` 按调用方 scope 列举）以及作为 `dsh-fusion` Sidekick 的用法。`docs/README.en.md` 同步；es / pt-BR 文件加横幅指向权威版本。
+  - 上游 `package.json` 里的 `repository` / `bugs` / `homepage` 原来指向 `amlyczz/dsh-agy-link`，现改为指向本 fork。
+
+**Full Changelog**: https://github.com/SQDR2/dsh-agy-worker/compare/v0.4.102...v0.4.103
+
 ## 0.4.102 (2026-11-03)
 
 ### English

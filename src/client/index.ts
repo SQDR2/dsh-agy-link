@@ -1,4 +1,4 @@
-// dsh-agy-link client half (browser). Integrated into native DSH left sidebar, main panel, and header.
+// dsh-agy-worker client half (browser). Integrated into native DSH left sidebar, main panel, and header.
 import type { Context } from '@deepseek-ai/cordis';
 import type {} from '@deepseek-ai/dsh-client-locale/client';
 import type { AccountPoolData, FamilyQuotaInfo, ManagedAccount, ModelQuotaInfo } from '../common/pool-types.ts';
@@ -47,7 +47,7 @@ const portalToBody = (node: unknown) => {
 	return node;
 };
 
-export const name = 'dsh-agy-link-client';
+export const name = 'dsh-agy-worker-client';
 // Cordis inject entries are hard dependencies: accessing a service not listed
 // here throws ("cannot get property X without inject"). locale must be declared
 // for ctx.locale to be readable (issue #24). dsh-web-app ships dsh-client-locale.
@@ -136,7 +136,7 @@ async function getStatus(): Promise<StatusPayload | null> {
 		if (typeof AbortSignal !== 'undefined' && typeof (AbortSignal as { timeout?: unknown }).timeout === 'function') {
 			init.signal = (AbortSignal as { timeout: (ms: number) => unknown }).timeout(5000);
 		}
-		const res = await win.fetch?.(base + '/plugins/agy-link/status', init);
+		const res = await win.fetch?.(base + '/plugins/agy-worker/status', init);
 		if (!res || !res.ok) return null;
 		return (await res.json()) as StatusPayload;
 	} catch {
@@ -550,8 +550,8 @@ function navIconCss(logoUrl: string): string {
 function installSettingsNavIcon(ctx: ClientContext, resolveLabel: () => string): () => void {
 	if (typeof document === 'undefined') return () => {};
 	const tag = document.createElement('style');
-	tag.dataset.plugin = 'dsh-agy-link';
-	tag.dataset.pluginCss = 'dsh-agy-link/settings-nav-icon';
+	tag.dataset.plugin = 'dsh-agy-worker';
+	tag.dataset.pluginCss = 'dsh-agy-worker/settings-nav-icon';
 	tag.textContent = navIconCss(agyNavLogoUrl());
 	document.head.appendChild(tag);
 	let disposed = false;
@@ -1087,7 +1087,7 @@ html.agy-modal-open [data-conversation-scroll] {
 
 function injectGlobalStyles(): void {
 	if (typeof document === 'undefined') return;
-	const styleId = 'dsh-agy-link-global-css';
+	const styleId = 'dsh-agy-worker-global-css';
 	if (document.getElementById(styleId) === null) {
 		const st = document.createElement('style');
 		st.id = styleId;
@@ -1335,19 +1335,19 @@ export function apply(ctx: ClientContext): void {
 				statusPollTimer = null;
 			}
 		};
-	}, 'agy-link: status polling');
+	}, 'agy-worker: status polling');
 	// locale is declared in inject — cordis guarantees ctx.locale (issue #24).
 	const locale = ctx.locale;
 	ctx.effect(() => {
 		const disposePtBR = locale.addLanguage({ id: 'pt-BR', label: 'Português (Brasil)', fallback: 'en' });
 		const disposeEs = locale.addLanguage({ id: 'es', label: 'Español', fallback: 'en' });
-		// Untyped single-locale form: 'agy-link' is not in the host LocaleNamespaceMap merge table.
+		// Untyped single-locale form: 'agy-worker' is not in the host LocaleNamespaceMap merge table.
 		const disposeZh = locale.register(NS, 'zh', zh);
 		const disposeEn = locale.register(NS, 'en', en);
 		const disposePtBRDictionary = locale.register(NS, 'pt-BR', ptBR);
 		const disposeEsDictionary = locale.register(NS, 'es', es);
 		return () => { disposeEsDictionary(); disposePtBRDictionary(); disposeEn(); disposeZh(); disposeEs(); disposePtBR(); };
-	}, 'agy-link: locale dictionaries');
+	}, 'agy-worker: locale dictionaries');
 	const useAgyTranslation = () => {
 		const [, rerender] = useState(0);
 		useEffect(() => locale.subscribe(() => rerender((revision) => revision + 1)), []);
@@ -1424,7 +1424,7 @@ export function apply(ctx: ClientContext): void {
 			setLoadingAction('pool:beginAdd');
 			const alias = aliasInput.trim();
 			const proxyUrl = addProxyInput.trim();
-			const res = await postJson('/plugins/agy-link/pool/begin-add', {
+			const res = await postJson('/plugins/agy-worker/pool/begin-add', {
 				...(alias ? { alias } : {}),
 				...(proxyUrl ? { proxyUrl } : {}),
 			});
@@ -1445,7 +1445,7 @@ export function apply(ctx: ClientContext): void {
 		const handleCompleteAddAccount = async (): Promise<void> => {
 			if (!authCodeInput.trim()) return;
 			setLoadingAction('pool:completeAdd');
-			const res = await postJson('/plugins/agy-link/pool/complete-add', { code: authCodeInput.trim() });
+			const res = await postJson('/plugins/agy-worker/pool/complete-add', { code: authCodeInput.trim() });
 			setLoadingAction(null);
 			if (res && res.ok) {
 				flowStartedRef.current = false;
@@ -1462,7 +1462,7 @@ export function apply(ctx: ClientContext): void {
 
 		const handleCancelAddAccount = async (): Promise<void> => {
 			flowStartedRef.current = false;
-			await postJson('/plugins/agy-link/pool/cancel-add', {});
+			await postJson('/plugins/agy-worker/pool/cancel-add', {});
 			setAuthCodeInput('');
 			setAliasInput('');
 			setAddProxyInput('');
@@ -1472,7 +1472,7 @@ export function apply(ctx: ClientContext): void {
 
 		const reorderAccounts = async (newIds: string[]): Promise<void> => {
 			setLoadingAction('pool:reorder');
-			const res = await postJson('/plugins/agy-link/pool/reorder', { ids: newIds });
+			const res = await postJson('/plugins/agy-worker/pool/reorder', { ids: newIds });
 			setLoadingAction(null);
 			if (res && res.ok) {
 				await refresh();
@@ -1495,7 +1495,7 @@ export function apply(ctx: ClientContext): void {
 
 		const setCfg = async (key: string, value: unknown): Promise<void> => {
 			setLoadingAction(`config:${key}`);
-			const res = await postJson('/plugins/agy-link/config', { key, value });
+			const res = await postJson('/plugins/agy-worker/config', { key, value });
 			if (res === null || res?.ok === false) {
 				setLoadingAction(null);
 				actionFailed();
@@ -1524,7 +1524,7 @@ export function apply(ctx: ClientContext): void {
 			setOptimisticActiveId(id);
 			setLoadingAction(`active:${id}`);
 			try {
-				const res = await postJson('/plugins/agy-link/pool/set-active', { id });
+				const res = await postJson('/plugins/agy-worker/pool/set-active', { id });
 				if (res && res.ok) {
 					await refresh();
 					showToast(t('account.activeSet'), 'success');
@@ -1543,7 +1543,7 @@ export function apply(ctx: ClientContext): void {
 
 		const removeAccount = async (id: string, alias: string): Promise<void> => {
 			setLoadingAction(`remove:${id}`);
-			const res = await postJson('/plugins/agy-link/pool/remove', { id });
+			const res = await postJson('/plugins/agy-worker/pool/remove', { id });
 			if (res === null || res?.ok === false) {
 				setLoadingAction(null);
 				actionFailed();
@@ -1557,7 +1557,7 @@ export function apply(ctx: ClientContext): void {
 		const toggleAccountEnabled = async (acc: ManagedAccount): Promise<void> => {
 			const nextState = !acc.enabled;
 			setLoadingAction(`enable:${acc.id}`);
-			const res = await postJson('/plugins/agy-link/pool/enable', { id: acc.id, enabled: nextState });
+			const res = await postJson('/plugins/agy-worker/pool/enable', { id: acc.id, enabled: nextState });
 			if (res === null || res?.ok === false) {
 				setLoadingAction(null);
 				actionFailed();
@@ -1575,7 +1575,7 @@ export function apply(ctx: ClientContext): void {
 		const refreshQuota = async (id?: string): Promise<void> => {
 			setLoadingAction(id ? `refresh:${id}` : 'refresh:all');
 			try {
-				const res = await postJson('/plugins/agy-link/pool/refresh-quota', { id });
+				const res = await postJson('/plugins/agy-worker/pool/refresh-quota', { id });
 				if (res === null || res?.ok === false) {
 					actionFailed();
 					return;
@@ -1590,7 +1590,7 @@ export function apply(ctx: ClientContext): void {
 		const warmupAccount = async (id?: string): Promise<void> => {
 			setLoadingAction(id ? `warmup:${id}` : 'warmup:all');
 			try {
-				const res = await postJson('/plugins/agy-link/pool/warmup', {
+				const res = await postJson('/plugins/agy-worker/pool/warmup', {
 					id,
 					force: true,
 					...(id ? {} : { all: true }),
@@ -1621,7 +1621,7 @@ export function apply(ctx: ClientContext): void {
 		const saveProxy = async (id: string): Promise<void> => {
 			setLoadingAction(`proxy:${id}`);
 			const proxyUrl = proxyInputs[id];
-			const res = await postJson('/plugins/agy-link/pool/proxy', { id, proxyUrl });
+			const res = await postJson('/plugins/agy-worker/pool/proxy', { id, proxyUrl });
 			if (res === null || res?.ok === false) {
 				setLoadingAction(null);
 				actionFailed();
@@ -1635,7 +1635,7 @@ export function apply(ctx: ClientContext): void {
 
 		const setMode = async (mode: string): Promise<void> => {
 			setLoadingAction(`mode:${mode}`);
-			const res = await postJson('/plugins/agy-link/pool/mode', { mode });
+			const res = await postJson('/plugins/agy-worker/pool/mode', { mode });
 			if (res === null || res?.ok === false) {
 				setLoadingAction(null);
 				actionFailed();
@@ -1647,7 +1647,7 @@ export function apply(ctx: ClientContext): void {
 
 		const clearCooldown = async (id?: string): Promise<void> => {
 			setLoadingAction(id ? `clearCooldown:${id}` : 'clearCooldown:all');
-			const res = await postJson('/plugins/agy-link/pool/clear-cooldown', { id });
+			const res = await postJson('/plugins/agy-worker/pool/clear-cooldown', { id });
 			if (res === null || res?.ok === false) {
 				setLoadingAction(null);
 				actionFailed();
@@ -2505,7 +2505,7 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 		const dispose = ctx.slots.register(
 			{
 				name: 'conversation.session.header.actions',
-				id: 'agy-link-status',
+				id: 'agy-worker-status',
 				order: 10,
 				label: () => locale.bind(NS)('section.label'),
 				locale: NS,
@@ -2528,7 +2528,7 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 		const dispose = ctx.slots.register(
 			{
 				name: 'sidebar.panellist',
-				id: 'agy-link',
+				id: 'agy-worker',
 				order: 20,
 				label: () => locale.bind(NS)('section.label'),
 				locale: NS,
@@ -2544,7 +2544,7 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 		const dispose = ctx.slots.register(
 			{
 				name: 'main',
-				key: 'agy-link',
+				key: 'agy-worker',
 				locale: NS,
 			},
 			AgySettingsSection,
@@ -2552,13 +2552,13 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 		return dispose;
 	});
 
-	// Plugins page (sidebar → 插件 → dsh-agy-link): the bundle's detail panel.
+	// Plugins page (sidebar → 插件 → dsh-agy-worker): the bundle's detail panel.
 	// Directly reuses the identical Antigravity management console (AgySettingsSection),
 	// providing 100% feature parity and zero redundancy.
 	// When view === "summary", returns null to keep plugin list cards compact and clean.
 	ctx.slots.inject('plugins.bundle.config', () => {
 		const dispose = ctx.slots.register(
-			{ name: 'plugins.bundle.config', key: 'dsh-agy-link', locale: NS },
+			{ name: 'plugins.bundle.config', key: 'dsh-agy-worker', locale: NS },
 			(ownerProps?: unknown) => {
 				const view = (ownerProps as { view?: string } | undefined)?.view;
 				if (view === 'summary') return null;
@@ -2568,11 +2568,11 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 		return dispose;
 	});
 
-	// Also register row config for the agy-link row, so clicking through row
+	// Also register row config for the agy-worker row, so clicking through row
 	// items renders the identical Antigravity management console.
 	ctx.slots.inject('plugins.row.config', () => {
 		const dispose = ctx.slots.register(
-			{ name: 'plugins.row.config', key: 'dsh-agy-link#agy-link', locale: NS },
+			{ name: 'plugins.row.config', key: 'dsh-agy-worker#agy-worker', locale: NS },
 			(ownerProps?: unknown) => {
 				const view = (ownerProps as { view?: string } | undefined)?.view;
 				if (view === 'summary') return null;

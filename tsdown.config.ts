@@ -1,4 +1,4 @@
-// Build config for dsh-agy-link (tsdown / rolldown), mirroring the layout
+// Build config for dsh-agy-worker (tsdown / rolldown), mirroring the layout
 // proven by dsh-lark-link:
 //  Host half:  src/index.ts  -> dist/index.js (ESM, node), @deepseek-ai/*
 //              stays external (provided by the harness host at runtime).
@@ -59,7 +59,7 @@ export default defineConfig([
     external: [/^@deepseek-ai\//, "react", "react-dom", "react/jsx-runtime"],
     outputOptions: {
       entryFileNames: "client.js",
-      banner: `window.__ModuleLoader__.load({ id: "dsh-agy-link", factory: (require) => {`,
+      banner: `window.__ModuleLoader__.load({ id: "dsh-agy-worker", factory: (require) => {`,
       intro: "var module = { exports: {} }; var exports = module.exports;",
       footer: "return module.exports; } });",
     },

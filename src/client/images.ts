@@ -1,6 +1,6 @@
 import { isInteractionLocked, onScrollSettle } from './scroll-guard.ts';
 
-// Client-side local image display & lightbox enhancer for dsh-agy-link.
+// Client-side local image display & lightbox enhancer for dsh-agy-worker.
 //
 // Solves local image display issues in DSH Web and Desktop:
 // 1. Normalizes media endpoints across local Desktop and remote Web clients
@@ -202,7 +202,7 @@ const IMAGE_CSS = `
 
 function injectStyles(): void {
   if (typeof document === 'undefined') return;
-  const styleId = 'dsh-agy-link-images-css';
+  const styleId = 'dsh-agy-worker-images-css';
   if (document.getElementById(styleId) === null) {
     const st = document.createElement('style');
     st.id = styleId;
@@ -222,7 +222,7 @@ function getOrigin(): string {
 /** Build media URL from path */
 export function buildMediaUrl(rawPath: string): string {
   const origin = getOrigin();
-  return `${origin}/plugins/agy-link/media?path=${encodeURIComponent(rawPath.trim())}`;
+  return `${origin}/plugins/agy-worker/media?path=${encodeURIComponent(rawPath.trim())}`;
 }
 
 /**
@@ -427,7 +427,7 @@ export function scanAndEnhanceImages(): void {
 
   // 1. Rewrite any existing <img> src pointing to 127.0.0.1 to current origin if remote
   if (origin && !origin.includes('127.0.0.1') && !origin.includes('localhost')) {
-    const images = document.querySelectorAll<HTMLImageElement>('img[src*="/plugins/agy-link/media"]');
+    const images = document.querySelectorAll<HTMLImageElement>('img[src*="/plugins/agy-worker/media"]');
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
       if (img && img.src.includes('127.0.0.1')) {

@@ -96,7 +96,7 @@ function settledRunCode(args: Record<string, unknown>): ToolBlock {
 }
 
 const LONG_CODE = 'const a = 1;\n' + Array.from({ length: 60 }, (_, i) => `const line${i} = ${i};`).join('\n')
-const MIRROR_CODE = "// dsh-agy-link mirror: replay recorded agy tool step 4 (view_file)\nreturn await tools['agy_tool']({\"run\":\"abc\",\"step\":4})"
+const MIRROR_CODE = "// dsh-agy-worker mirror: replay recorded agy tool step 4 (view_file)\nreturn await tools['agy_tool']({\"run\":\"abc\",\"step\":4})"
 
 test('runCodeModel: description becomes the row summary', () => {
   const model = runCodeModel(settledRunCode({ code: 'const x = 1;', description: 'Read toolview contract' }))
@@ -132,7 +132,7 @@ test('run_code toolview declares the locale namespace for its card labels', () =
   const { registrations } = loadClient()
   const runCode = registrations.find((r) => r.key === 'run_code')
   assert.ok(runCode, 'run_code registration present')
-  assert.equal(runCode.locale, 'agy-link', 'locale namespace declared so the t seat resolves code.* labels')
+  assert.equal(runCode.locale, 'agy-worker', 'locale namespace declared so the t seat resolves code.* labels')
 })
 
 test('non-mirror run_code renders the styled code row, not the unstyled legacy wrapper', () => {

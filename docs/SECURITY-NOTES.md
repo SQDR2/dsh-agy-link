@@ -1,6 +1,6 @@
 # Security notes
 
-Threat model and boundaries for dsh-agy-link.
+Threat model and boundaries for dsh-agy-worker.
 
 ## What the plugin executes
 
@@ -49,7 +49,7 @@ before attaching.
 
 ## HTTP surfaces and request-body caps
 
-- The plugin's web routes (`/plugins/agy-link/*`) and the experimental loopback
+- The plugin's web routes (`/plugins/agy-worker/*`) and the experimental loopback
   MCP bridge (`/call`) share one bounded JSON body reader
   (`src/host/read-json-body.ts`): bodies are capped (1 MiB for plugin routes,
   8 MiB for `/call`) and oversized bodies are discarded rather than buffered, so

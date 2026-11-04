@@ -133,7 +133,7 @@ export interface EventMapperOptions {
    * real thought text instead of token-count annotations.
    */
   resolvedThoughts?: ReadonlyMap<number, string>
-  /** Base URL for the media route, e.g. http://127.0.0.1:5173/plugins/agy-link/media */
+  /** Base URL for the media route, e.g. http://127.0.0.1:5173/plugins/agy-worker/media */
   mediaBaseUrl?: string
   /** Active DSH goal context for the current turn, if running under <goal_round>. */
   goalContext?: GoalContext | null

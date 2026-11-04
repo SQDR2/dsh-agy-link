@@ -1,6 +1,6 @@
 import { isInteractionLocked, onScrollSettle } from './scroll-guard.ts';
 
-// Client-side mermaid rendering (dsh-agy-link).
+// Client-side mermaid rendering (dsh-agy-worker).
 //
 // DSH's markdown pipeline (marked + shiki) has no mermaid grammar: a
 // ```mermaid fence falls through `highlightToHtml` as unknown language and
@@ -115,7 +115,7 @@ declare global {
  * When the local asset is missing the source block simply stays visible.
  */
 const CDN_URLS = [
-	'/plugins/agy-link/mermaid.min.js',
+	'/plugins/agy-worker/mermaid.min.js',
 ]
 
 let loadPromise: Promise<MermaidApi | null> | null = null

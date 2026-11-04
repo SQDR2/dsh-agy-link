@@ -23,7 +23,7 @@ Worker 必须能调用 Fusion 的委派工具（`fusion_submit_result` 等），
 该缺陷已修复：`/tools` 现在和 `/call` 一样解析 `X-DSH-Session` 得到调用方 agent，
 并调用 `schemas(agent)`。
 
-> **因此：请确认所用 dsh-agy-link 版本已包含该修复。**
+> **因此：请确认所用 dsh-agy-worker 版本已包含该修复。**
 > 回归用例：`test/mcp-bridge-registry-and-agent.test.ts`
 > → `/tools lists tools registered on the calling agent scope`。
 > 在修复前，缺失 `fusion_*` 的表现就是「配置全对但工具列表为空」。

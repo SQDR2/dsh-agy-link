@@ -63,7 +63,7 @@ test('hiding a model announces itself to the picker via llm/adapters-updated', a
     await new Promise((resolve) => setTimeout(resolve, 20))
     apply(ctx, { enabled: false, mcpBridge: false })
     await new Promise((resolve) => setTimeout(resolve, 20))
-    const configRoute = routes.find((r) => r.path === '/plugins/agy-link/config')
+    const configRoute = routes.find((r) => r.path === '/plugins/agy-worker/config')
     assert.ok(configRoute, 'config route must be registered')
     const post = (body: Record<string, unknown>): Promise<number> =>
       new Promise((resolve) => {
@@ -85,7 +85,7 @@ test('hiding a model announces itself to the picker via llm/adapters-updated', a
     assert.equal(await post({ key: 'defaultEffort', value: 'high' }), 200)
     assert.equal(emitted.length, before, 'unrelated config keys must not emit the picker event')
     // The write landed in the runtime-overrides file under DSH_HOME.
-    const overrides = JSON.parse(readFileSync(join(dir, 'agy-link', 'runtime-overrides.json'), 'utf8')) as Record<string, unknown>
+    const overrides = JSON.parse(readFileSync(join(dir, 'agy-worker', 'runtime-overrides.json'), 'utf8')) as Record<string, unknown>
     assert.deepEqual(overrides.hiddenModels, ['gemini-3.7-flash'])
   } finally {
     await ctx.fiber.dispose()

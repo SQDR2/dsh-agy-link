@@ -3,18 +3,61 @@
 // hot changes and survives restarts; the env is read per call so a changed
 // process environment is honored without reload.
 import { defaultConfig, type PermissionMode, type PluginConfig } from './types.ts'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, renameSync, cpSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 export interface OverridesFile { [key: string]: unknown }
 
+/** State directory name used before the 0.4.103 rename to dsh-agy-worker. */
+const LEGACY_STATE_DIR = 'agy-link'
+
 export function dshHome(): string {
   return process.env.DSH_HOME ?? join(homedir(), '.dsh')
 }
 
+/**
+ * Move `<dsh home>/agy-link` to `agy-worker` once, so an upgraded install keeps
+ * its runtime overrides, session map, media cache and warmup history. The move
+ * is skipped when the new directory already exists (never overwrite live state)
+ * and is fully best-effort: a failure just starts from an empty directory.
+ */
+export function adoptLegacyStateDir(next: string): void {
+  const legacy = join(dshHome(), LEGACY_STATE_DIR)
+  if (existsSync(next) || !existsSync(legacy)) return
+  try {
+    renameSync(legacy, next)
+    return
+  } catch {
+    // Cross-device or a locked file: fall back to a copy, then drop the source.
+  }
+  try {
+    cpSync(legacy, next, { recursive: true })
+  } catch {
+    rmSync(next, { recursive: true, force: true })
+    return
+  }
+  try {
+    rmSync(legacy, { recursive: true, force: true })
+  } catch {
+    // The new copy is complete; a leftover legacy directory is harmless.
+  }
+}
+
+let stateDirSettled = false
+
 export function stateDir(): string {
-  return join(dshHome(), 'agy-link')
+  const dir = join(dshHome(), 'agy-worker')
+  if (!stateDirSettled) {
+    stateDirSettled = true
+    adoptLegacyStateDir(dir)
+  }
+  return dir
+}
+
+/** Test-only: forget that the one-shot legacy adoption already ran. */
+export function resetStateDirAdoption(): void {
+  stateDirSettled = false
 }
 
 export function overridesPath(): string {

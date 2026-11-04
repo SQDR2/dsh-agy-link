@@ -1,4 +1,4 @@
-// Global scroll activity coordinator (dsh-agy-link).
+// Global scroll activity coordinator (dsh-agy-worker).
 //
 // Dynamic measurement virtual lists (TanStack Virtualizer in DSH) continuously
 // mount and unmount DOM nodes at high frequency during scroll gestures. If any

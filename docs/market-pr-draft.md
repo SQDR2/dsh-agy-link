@@ -1,17 +1,17 @@
 # Market PR draft (awesome-dsh-plugin & dsh-market)
 
 Target: [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) repository.
-File path: `data/plugins/amlyczz__dsh-agy-link.yml`
+File path: `data/plugins/SQDR2__dsh-agy-worker.yml`
 
 > **Note**: Submitting to `awesome-dsh-plugin` automatically indexes the plugin into `dsh-market` (the in-app GUI plugin market inside DeepSeek Harness), `awesome-dsh-plugin.com`, DSH Desktop, and DSH Get!
 
 ---
 
-### `data/plugins/amlyczz__dsh-agy-link.yml`
+### `data/plugins/SQDR2__dsh-agy-worker.yml`
 
 ```yaml
-url: https://github.com/amlyczz/dsh-agy-link
-name: amlyczz/dsh-agy-link
+url: https://github.com/SQDR2/dsh-agy-worker
+name: SQDR2/dsh-agy-worker
 category: model
 description:
   en: 'Google Antigravity (agy CLI) models for DSH — streaming chat with Gemini/Claude/GPT-OSS subscriptions, native tool cards, thinking turns, and in-GUI Google OAuth login.'
@@ -22,15 +22,15 @@ description:
 
 ### PR Title & Body Draft
 
-**Title**: `Add amlyczz/dsh-agy-link (model)`
+**Title**: `Add SQDR2/dsh-agy-worker (model)`
 
 **Body**:
 
 ```markdown
-## Add amlyczz/dsh-agy-link (model)
+## Add SQDR2/dsh-agy-worker (model)
 
-- **Repo**: https://github.com/amlyczz/dsh-agy-link
-- **npm**: https://www.npmjs.com/package/dsh-agy-link
+- **Repo**: https://github.com/SQDR2/dsh-agy-worker
+- **npm**: https://www.npmjs.com/package/dsh-agy-worker
 - **Category**: `model`
 
 Brings Google Antigravity models (Gemini / Claude / GPT-OSS slugs exposed by the agy CLI) into DSH as a first-class provider route:
@@ -46,6 +46,6 @@ Brings Google Antigravity models (Gemini / Claude / GPT-OSS slugs exposed by the
 - [x] >= 10 commits (currently 40+)
 - [x] Repository age >= 1 day
 - [x] `dsh-plugin` topic set on GitHub repository
-- [x] Published and verified on npm (`dsh-agy-link`)
+- [x] Published and verified on npm (`dsh-agy-worker`)
 ```
 

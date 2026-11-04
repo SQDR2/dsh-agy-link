@@ -155,7 +155,7 @@ export async function sweepDir(dir: string, ttlMs: number, now = Date.now()): Pr
   return removed;
 }
 
-/** Default media directory: <dsh home>/agy-link/media. */
+/** Default media directory: <dsh home>/agy-worker/media. */
 export function defaultMediaDir(stateDir: string): string {
   return join(stateDir, 'media')
 }

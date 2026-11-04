@@ -245,7 +245,7 @@ test('mcp bridge script speaks JSON-RPC over stdio end to end', async () => {
   try {
     send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} })
     const init = await waitFor((m) => m.id === 1)
-    assert.equal((init.result as { serverInfo?: { name?: string } }).serverInfo?.name, 'dsh-agy-link-bridge')
+    assert.equal((init.result as { serverInfo?: { name?: string } }).serverInfo?.name, 'dsh-agy-worker-bridge')
     send({ jsonrpc: '2.0', method: 'notifications/initialized' })
     send({ jsonrpc: '2.0', id: 2, method: 'tools/list' })
     const list = await waitFor((m) => m.id === 2)

@@ -1,6 +1,6 @@
-// dsh-agy-link host assembly (spec section 5): dormant-safe detection,
+// dsh-agy-worker host assembly (spec section 5): dormant-safe detection,
 // LlmAdapter registration, /agy commands, agy_ask tool, auth helper, and
-// the /plugins/agy-link/* HTTP surface the client half polls. Everything
+// the /plugins/agy-worker/* HTTP surface the client half polls. Everything
 // registers as cordis effects, so uninstalling the plugin rolls it back
 // cleanly.
 import type { Context } from '@deepseek-ai/cordis'
@@ -35,7 +35,7 @@ import { readJsonBody } from './host/read-json-body.ts'
 import { fileURLToPath } from 'node:url'
 import { handleMediaRequest, handleAssetRequest, type HttpRequestLike, type HttpResponseLike } from './host/media-route.ts'
 
-export const name = 'dsh-agy-link'
+export const name = 'dsh-agy-worker'
 // webServer and tools are optional: the plugin loads headless too.
 export const inject = ['llm', 'commands']
 
@@ -108,7 +108,7 @@ class Semaphore {
 }
 
 export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): void {
-  const tag = '[dsh-agy-link] '
+  const tag = '[dsh-agy-worker] '
   const log = (msg: string) => {
     const logger = (ctx as unknown as { logger?: { info?: (m: string) => void } }).logger
     logger?.info?.(tag + msg)
@@ -288,7 +288,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
     acquire: (signal) => semaphore.acquire(signal),
     log,
     runs,
-    getMediaBaseUrl: () => (webServerPort.current ? `http://127.0.0.1:${webServerPort.current}/plugins/agy-link/media` : null),
+    getMediaBaseUrl: () => (webServerPort.current ? `http://127.0.0.1:${webServerPort.current}/plugins/agy-worker/media` : null),
     sessionCwd: (sessionId) => {
       const sessions = ctx.get('sessions') as { get(id: unknown): { header?: { cwd?: string } } | undefined } | undefined
       return sessions?.get(sessionId)?.header?.cwd
@@ -574,7 +574,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
   // dsh web), and in headless compositions it never does. The sub-fiber
   // starts whenever the service appears and tears the routes down when it
   // goes away — no more silent one-shot ctx.get() that permanently loses
-  // the /plugins/agy-link/* routes when it races the server startup.
+  // the /plugins/agy-worker/* routes when it races the server startup.
   const registerRoutes = (webServer: WebServerLike): (() => void) => {
     const disposers: Array<() => void> = []
     const reg = (route: { kind: string; path: string; handler: (req: unknown, res: unknown) => void }): void => {
@@ -600,12 +600,12 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
     return typeof m === 'string' ? m.toUpperCase() : 'GET'
   };
 
-    reg({ kind: 'exact', path: '/plugins/agy-link/status', handler: (_req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/status', handler: (_req, res) => {
       void (async () => {
         const cfg = getConfig()
         const cat = catalog.get()
         sendJson(res as RawRes, 200, {
-          plugin: 'dsh-agy-link',
+          plugin: 'dsh-agy-worker',
           bin: bin(),
           version: versionCache,
           dormantReason,
@@ -630,7 +630,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/auth', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/auth', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -646,7 +646,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, st)
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/auth-code', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/auth-code', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -672,7 +672,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, st)
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/auth-cancel', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/auth-cancel', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -683,7 +683,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, st)
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/mermaid.min.js', handler: (_req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/mermaid.min.js', handler: (_req, res) => {
       const p = join(import.meta.dirname, 'mermaid.min.js')
       const fallback = join(import.meta.dirname, '..', 'assets', 'mermaid.min.js')
       const file = existsSync(p) ? p : existsSync(fallback) ? fallback : null
@@ -704,10 +704,10 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         ;(res as RawRes).end('read error: ' + String(err))
       }
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool', handler: (_req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool', handler: (_req, res) => {
       sendJson(res as RawRes, 200, pool.getPoolData(getConfig().proxyUrl.trim() || undefined))
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/begin-add', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/begin-add', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -722,7 +722,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, st.ok ? 200 : 500, st)
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/complete-add', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/complete-add', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -743,7 +743,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/cancel-add', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/cancel-add', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -754,7 +754,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/add', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/add', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -781,7 +781,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, account: acc, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/open-terminal', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/open-terminal', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -798,7 +798,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, dir: acc.dir })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/remove', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/remove', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -812,7 +812,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/enable', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/enable', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -827,7 +827,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, ok ? 200 : 400, { ok, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/proxy', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/proxy', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -840,7 +840,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/primary', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/primary', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -857,7 +857,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/mode', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/mode', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -869,7 +869,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/refresh-quota', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/refresh-quota', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -892,7 +892,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/warmup', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/warmup', handler: (req, res) => {
       void (async () => {
         try {
           if (methodOf(req) !== 'POST') {
@@ -939,7 +939,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         }
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/clear-cooldown', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/clear-cooldown', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -952,7 +952,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/set-active', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/set-active', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -974,7 +974,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, ok ? 200 : 400, { ok, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/pool/reorder', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/pool/reorder', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -992,7 +992,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, pool: pool.getPoolData() })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/config', handler: (req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/config', handler: (req, res) => {
       void (async () => {
         if (methodOf(req) !== 'POST') {
           sendJson(res as RawRes, 405, { error: 'POST only' })
@@ -1022,7 +1022,7 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
         sendJson(res as RawRes, 200, { ok: true, key, value: body.value })
       })()
     }})
-    reg({ kind: 'exact', path: '/plugins/agy-link/qr', handler: (_req, res) => {
+    reg({ kind: 'exact', path: '/plugins/agy-worker/qr', handler: (_req, res) => {
       void (async () => {
         const st = auth.status()
         const url = st.phase === 'pending' ? st.url : undefined
@@ -1044,14 +1044,14 @@ export function apply(ctx: Context, entryConfig: Record<string, unknown> = {}): 
       })()
     }})
 
-    // /plugins/agy-link/media?path=...
-    reg({ kind: 'exact', path: '/plugins/agy-link/media', handler: (req, res) => {
+    // /plugins/agy-worker/media?path=...
+    reg({ kind: 'exact', path: '/plugins/agy-worker/media', handler: (req, res) => {
       handleMediaRequest(req as HttpRequestLike, res as HttpResponseLike, { workspaceRoot: getConfig().workspaceRoot })
     }})
 
-    // /plugins/agy-link/assets/...
+    // /plugins/agy-worker/assets/...
     const assetDir = resolveAssetDir()
-    reg({ kind: 'prefix', path: '/plugins/agy-link/assets', handler: (req, res) => {
+    reg({ kind: 'prefix', path: '/plugins/agy-worker/assets', handler: (req, res) => {
       handleAssetRequest(req as HttpRequestLike, res as HttpResponseLike, assetDir)
     }})
 

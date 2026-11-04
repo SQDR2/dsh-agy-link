@@ -28,7 +28,7 @@ const pool = new AccountPoolManager()
 const homeDir = homedir()
 const log = (m: string): void => console.log('  ' + m)
 
-console.log(`dsh-agy-link pool repair — ${APPLY ? 'APPLY' : 'DRY RUN'}`)
+console.log(`dsh-agy-worker pool repair — ${APPLY ? 'APPLY' : 'DRY RUN'}`)
 console.log(`pool dir: ${pool.dir}`)
 console.log('')
 

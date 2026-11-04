@@ -85,7 +85,7 @@ export function buildMirrorRunCode(
     : toolName
   return {
     code:
-      '// dsh-agy-link mirror: replay recorded agy tool step ' +
+      '// dsh-agy-worker mirror: replay recorded agy tool step ' +
       eventIndex +
       ' (' +
       toolName +
@@ -698,7 +698,7 @@ export function defineAgyMirrorTool(deps: { runs: RunRegistry }) {
   return defineTool({
     name: MIRROR_TOOL_NAME,
     description:
-      'Internal to the dsh-agy-link bridge: replays one tool activity recorded from a Google Antigravity (agy) CLI run so it renders as a native tool card and rides the agent loop. Emitted automatically by the antigravity provider — do not call it directly.',
+      'Internal to the dsh-agy-worker bridge: replays one tool activity recorded from a Google Antigravity (agy) CLI run so it renders as a native tool card and rides the agent loop. Emitted automatically by the antigravity provider — do not call it directly.',
     parameters: {
       run: { type: 'string', required: true, description: 'Recording run id.' },
       step: { type: 'number', required: true, description: 'Recorded event index of the tool step.' },
