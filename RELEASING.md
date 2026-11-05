@@ -35,7 +35,8 @@ workflow 会跳过已存在于 registry 的版本，所以重跑同一个 tag �
 
 OIDC 发布是按**包**授权的，配置入口在包自己的 Settings 页；而一个从未发布过的包名是没有这个页面的。所以一个新包名的**第一次发布只能手工完成**：
 
-1. 用一个粒度 token 手工发一次（Permissions: **Read and write**；Packages and scopes 选 **All packages**；勾选 **Bypass two-factor authentication**）。
+1. 用一个粒度 token 手工发一次（Permissions: **Read and write**；Packages and scopes 选 **All packages**；勾选 **Bypass two-factor authentication**）。只在 scope 里给了 `@sqdr2` 的 token 发不了无 scope 的包，报错是 `E403 You may not perform that action with these credentials`。
+   - 首发后 npm 会先回 `202`，并短暂把包内容显示为 `0.0.0-stage` 占位版本；真正的版本在几分钟内替换它。发布后立刻 `npm view` 得到 `E404` 属于正常现象，别当成失败。
    - 没勾 bypass 2FA 会被拒：`E403 Two-factor authentication ... is required to publish packages`。
    - 只授权了 `@sqdr2` scope 的 token **发不了无 scope 的包**，报错是 `E403 You may not perform that action with these credentials`。
 2. 在 **npmjs.com → 该包 → Settings → Trusted publishing** 添加：

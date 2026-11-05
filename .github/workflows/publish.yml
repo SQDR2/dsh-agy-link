@@ -69,7 +69,9 @@ jobs:
           npm install -g npm@latest
           NAME=$(node -p "require('./package.json').name")
           VER=$(node -p "require('./package.json').version")
-          if node -e "fetch('https://registry.npmjs.org/'+process.argv[1]).then(r=>r.json()).then(j=>process.exit(j.versions&&j.versions[process.argv[2]]?0:1),()=>process.exit(1))" "$NAME" "$VER"; then
+          # A scoped name must be percent-encoded in the registry URL: @scope%2fname
+          ENCODED=$(node -p "require('./package.json').name.replace('/','%2f')")
+          if node -e "fetch('https://registry.npmjs.org/'+process.argv[1]).then(r=>r.json()).then(j=>process.exit(j.versions&&j.versions[process.argv[2]]?0:1),()=>process.exit(1))" "$ENCODED" "$VER"; then
             echo "$NAME@$VER is already on npm - not publishing"
             if [ "$DRY_RUN" = "true" ]; then npm pack --dry-run; fi
           elif [ "$DRY_RUN" = "true" ]; then

@@ -28,7 +28,7 @@
 
 本 fork 只做一件事：**让 agy 真正能当一个「被调用方驱动」的 Worker**，也就是让 [`dsh-fusion`](https://github.com/SQDR2/dsh-fusion) 能把 **agy（Gemini / Claude / GPT-OSS）选作 Sidekick**，并且这一轮委派真的能跑通、能交回结果，而不是卡在「工具表里有名字，却永远没有一次调用」。
 
-> 上游的 `dsh-agy-link` 名字、npm 包与仓库都不变。本仓库是独立发布线，包名 `dsh-agy-worker`，内部路由前缀 `/plugins/agy-worker/*`，数据目录 `~/.dsh/agy-worker`。
+> 上游的 `dsh-agy-link` 名字、npm 包与仓库都不变。本仓库是独立发布线，npm 包名 `dsh-agy-worker`，内部路由前缀 `/plugins/agy-worker/*`，数据目录 `~/.dsh/agy-worker`。
 
 ---
 
@@ -58,7 +58,7 @@ Fusion 的 Sidekick 是一轮「由调用方驱动的工具循环」：DSH 在�
 | `feat(client): move the Antigravity console to a left-sidebar panel` | 控制台从「设置 → 齿轮」迁到左侧边栏独立面板（`sidebar.panellist` + `main` 页），复用同一个 `AgySettingsSection` |
 | `feat(client): place the sidebar entry directly below 自动化任务` | `sidebar.panellist` 的 `order` 由 `100` 调整为 `20`，入口默认落在「自动化任务」（`order: 10`）下方、「更多」上方 |
 
-此外本 fork 完成了整体改名：包名 `dsh-agy-worker`、内部 id `agy-worker`、路由 `/plugins/agy-worker/*`。旧数据目录 `~/.dsh/agy-link` 会在首次启动时**自动迁移**到 `~/.dsh/agy-worker`（覆盖运行期覆盖项、会话映射、媒体缓存与预热历史；若新目录已存在则不做任何覆盖）。账号池目录 `~/.dsh/agy-accounts` 不变，**已登录的账号无需重新登录**。
+此外本 fork 完成了整体改名：npm 包名 `dsh-agy-worker`、内部 id `agy-worker`、路由 `/plugins/agy-worker/*`。旧数据目录 `~/.dsh/agy-link` 会在首次启动时**自动迁移**到 `~/.dsh/agy-worker`（覆盖运行期覆盖项、会话映射、媒体缓存与预热历史；若新目录已存在则不做任何覆盖）。账号池目录 `~/.dsh/agy-accounts` 不变，**已登录的账号无需重新登录**。
 
 ---
 
@@ -274,7 +274,7 @@ MIT License.
 
 It changes one thing: **making agy usable as a caller-driven Worker**, so that [`dsh-fusion`](https://github.com/SQDR2/dsh-fusion) can pick **agy (Gemini / Claude / GPT-OSS) as its Sidekick** and have a delegation actually complete and report back — instead of stalling on "the tool is in the table, but it is never called".
 
-> Upstream `dsh-agy-link` keeps its own name, npm package and repository. This is an independent line: package `dsh-agy-worker`, route prefix `/plugins/agy-worker/*`, state directory `~/.dsh/agy-worker`.
+> Upstream `dsh-agy-link` keeps its own name, npm package and repository. This is an independent line: npm package `dsh-agy-worker`, route prefix `/plugins/agy-worker/*`, state directory `~/.dsh/agy-worker`.
 
 ---
 
@@ -304,7 +304,7 @@ The last one is the root cause: `fusion_*` is **not** registered globally but on
 | `feat(client): move the Antigravity console to a left-sidebar panel` | The console moves from Settings → gear to a first-class left-sidebar panel (`sidebar.panellist` + `main` page), reusing the identical `AgySettingsSection` |
 | `feat(client): place the sidebar entry directly below 自动化任务` | `sidebar.panellist` order drops from `100` to `20`, so the entry sits directly below DSH's 自动化任务 panel (`order: 10`) and above the 更多 / More launcher |
 
-The fork also renames throughout: package `dsh-agy-worker`, internal id `agy-worker`, routes `/plugins/agy-worker/*`. The legacy state directory `~/.dsh/agy-link` is **migrated automatically** on first start (runtime overrides, session map, media cache, warmup history); an existing `agy-worker` directory is never overwritten. The account pool at `~/.dsh/agy-accounts` is untouched — **existing logins need no re-authentication**.
+The fork also renames throughout: npm package `dsh-agy-worker`, internal id `agy-worker`, routes `/plugins/agy-worker/*`. The legacy state directory `~/.dsh/agy-link` is **migrated automatically** on first start (runtime overrides, session map, media cache, warmup history); an existing `agy-worker` directory is never overwritten. The account pool at `~/.dsh/agy-accounts` is untouched — **existing logins need no re-authentication**.
 
 ---
 
