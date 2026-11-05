@@ -46,6 +46,7 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
+          always-auth: true
 
       - name: Check tag matches package.json version
         if: startsWith(github.ref, 'refs/tags/v')
@@ -64,7 +65,16 @@ jobs:
       - run: npm test
 
       # dist/ is gitignored and rebuilt by prepack, so npm publish builds it again.
+      #
+      # Auth: NPM_TOKEN is a granular token (packages: all, read+write, bypass
+      # 2FA) stored as a repository secret. It is the working path today.
+      # Preferred end state is Trusted Publishing (OIDC, no token at all): add a
+      # trusted publisher for this repo + publish.yml on the package's npm
+      # settings page, then delete this `env:` block and the NPM_TOKEN secret.
+      # `permissions: id-token: write` above is already in place for that.
       - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm install -g npm@latest
           NAME=$(node -p "require('./package.json').name")

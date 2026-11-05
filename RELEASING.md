@@ -4,7 +4,30 @@
 
 维护者笔记，普通用户不需要看这一页。
 
-`dsh-agy-worker` 通过 GitHub Actions 的 OIDC Trusted Publishing 发布到 npm，所以**任何地方都不存在长期有效的发布 token**。本文记录一次性配置、每次发版的循环，以及失败时的排查表。
+`dsh-agy-worker` 由 GitHub Actions 的 `.github/workflows/publish.yml` 发布到 npm。
+
+## 当前的认证方式
+
+现在走的是**仓库 secret `NPM_TOKEN`**（一个 granular token：packages 选 All packages、Read and write、勾选 Bypass 2FA）。这是目前唯一可用的自动化路径。
+
+**目标状态是 Trusted Publishing（OIDC，完全不需要 token）**，但它的配置只能在包的 npm 设置页上用浏览器完成，而命令行建不了：
+
+- `npm trust github` 会要求交互式 OTP，而账号只有安全密钥（WebAuthn）时拿不到 6 位验证码，命令直接失败。
+- 直接调 registry 的 `/-/package/<name>/trust` 需要精确的请求体结构，且同样要过 2FA 挑战。
+
+所以等你有时间时，请到 https://www.npmjs.com/package/dsh-agy-worker/access 添加：
+
+| 字段 | 值 |
+| --- | --- |
+| Provider | GitHub Actions |
+| Repository | `SQDR2/dsh-agy-worker` |
+| Workflow | `publish.yml` |
+| Environment name | 留空 |
+| Permission | allow npm publish |
+
+配置好后，把 `publish.yml` 里 Publish 步骤的 `env: NODE_AUTH_TOKEN` 段删掉，并删除仓库 secret `NPM_TOKEN`——`permissions: id-token: write` 已经就位。
+
+本文记录一次性配置、每次发版的循环，以及失败时的排查表。
 
 ## 什么会触发发布
 
