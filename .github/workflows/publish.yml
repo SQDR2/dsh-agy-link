@@ -77,6 +77,9 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm install -g npm@latest
+          # Fail fast and legibly if the token is missing, expired or revoked,
+          # instead of surfacing it as a confusing 401 from npm publish.
+          npm whoami
           NAME=$(node -p "require('./package.json').name")
           VER=$(node -p "require('./package.json').version")
           # A scoped name must be percent-encoded in the registry URL: @scope%2fname
