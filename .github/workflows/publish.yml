@@ -1,25 +1,58 @@
 name: Publish
 
+# Push a tag like v0.6.0 (must match the package.json version) to publish.
+# Auth is npm Trusted Publishing (OIDC) - no NPM_TOKEN is needed or used.
+# Manual run with dry_run=true installs, builds, tests and packs only (nothing is published).
+# A version that is already on npm is skipped, so re-running a tag is safe.
+#
+# The package name must already exist on npm before this workflow can publish:
+# a trusted publisher is configured on the package's own settings page, which a
+# name that has never been published does not have. For the very first publish
+# of a new name, publish once by hand with a granular token, then add the
+# trusted publisher (owner SQDR2, repository dsh-agy-worker, workflow
+# publish.yml, permission "allow npm publish") and let tags do the rest. A
+# trusted publisher must complete its first publish within 2 days or it expires
+# unvalidated. Full maintainer notes: RELEASING.md.
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (nothing is published)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   npm:
     runs-on: ubuntu-latest
-    environment: npm
+    timeout-minutes: 30
+    env:
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
           registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Check tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          TAG=${GITHUB_REF_NAME#v}
+          if [ "$PKG" != "$TAG" ]; then echo "tag v$TAG != package.json $PKG"; exit 1; fi
 
       - run: npm ci
 
@@ -30,6 +63,17 @@ jobs:
 
       - run: npm test
 
-      - run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # dist/ is gitignored and rebuilt by prepack, so npm publish builds it again.
+      - name: Publish
+        run: |
+          npm install -g npm@latest
+          NAME=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+          if node -e "fetch('https://registry.npmjs.org/'+process.argv[1]).then(r=>r.json()).then(j=>process.exit(j.versions&&j.versions[process.argv[2]]?0:1),()=>process.exit(1))" "$NAME" "$VER"; then
+            echo "$NAME@$VER is already on npm - not publishing"
+            if [ "$DRY_RUN" = "true" ]; then npm pack --dry-run; fi
+          elif [ "$DRY_RUN" = "true" ]; then
+            npm publish --access public --dry-run
+          else
+            npm publish --access public
+          fi

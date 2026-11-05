@@ -127,13 +127,14 @@ mcpToolAllowlist: "fusion_submit_result,fusion_read_state,fusion_read_evidence,b
 | **Node.js ≥ 24** | `node --version` |
 | **Google Antigravity `agy` CLI** | 按 [Google 官方文档](https://antigravity.google/docs/cli/install) 安装；`agy --version` 能输出版本号即可 |
 
-本包未发布到 npm，从 Git 仓库或本地路径安装：
-
 ```bash
-# 方式 A：从 GitHub 安装（pnpm 会执行 prepare 脚本自动构建）
+# 方式 A（推荐）：从 npm 安装，包内含预构建产物，无需本地编译
+dsh plugin --profile web add dsh-agy-worker
+
+# 方式 B：从 GitHub 安装（pnpm 会执行 prepare 脚本自动构建）
 dsh plugin --profile web add github:SQDR2/dsh-agy-worker
 
-# 方式 B：本地已 clone 的目录
+# 方式 C：本地已 clone 的目录
 git clone https://github.com/SQDR2/dsh-agy-worker.git ~/github/dsh-agy-worker
 cd ~/github/dsh-agy-worker && npm ci && npm run build && cd -
 dsh plugin --profile web add ~/github/dsh-agy-worker
@@ -347,7 +348,10 @@ Full configuration surface, verification steps and a troubleshooting matrix: **[
 > A per-account proxy can also be set from the account card (🌐 Proxy).
 
 ```bash
-# From GitHub (pnpm runs the prepare script and builds for you)
+# Recommended: install from npm (ships prebuilt output, no local build)
+dsh plugin --profile web add dsh-agy-worker
+
+# Or from GitHub (pnpm runs the prepare script and builds for you)
 dsh plugin --profile web add github:SQDR2/dsh-agy-worker
 
 # Or from a local clone
