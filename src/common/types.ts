@@ -4,7 +4,7 @@
 
 export const PROVIDER_ID = 'antigravity'
 export const PLUGIN_ID = 'agy-worker'
-export const PKG_NAME = 'dsh-agy-worker'
+export const PKG_NAME = '@sqdr2/dsh-agy-worker'
 
 export type PermissionMode = 'skip' | 'plan' | 'accept-edits'
 

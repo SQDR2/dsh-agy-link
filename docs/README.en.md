@@ -25,7 +25,7 @@ Replace the port with the correct local proxy port. An HTTP(S) or SOCKS proxy ca
 
 ```bash
 # Recommended: install from npm (ships prebuilt output, no local build)
-dsh plugin --profile web add dsh-agy-worker
+dsh plugin --profile web add @sqdr2/dsh-agy-worker
 
 # Or from GitHub (pnpm runs the prepare script and builds for you)
 dsh plugin --profile web add github:SQDR2/dsh-agy-worker

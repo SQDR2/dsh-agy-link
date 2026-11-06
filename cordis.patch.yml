@@ -1,9 +1,9 @@
 # dsh-agy-worker bundle patch — inserts the antigravity (agy CLI) provider
 # plugin entry into the composition. Users install via:
-#   dsh plugin --profile web add dsh-agy-worker
+#   dsh plugin --profile web add @sqdr2/dsh-agy-worker
 - insert:
     - id: agy-worker
-      name: 'dsh-agy-worker'
+      name: '@sqdr2/dsh-agy-worker'
       config:
         enabled: !!js "process.env.DSH_AGY_ENABLED ?? 'true'"
         agyBin: !!js "process.env.DSH_AGY_BIN ?? ''"

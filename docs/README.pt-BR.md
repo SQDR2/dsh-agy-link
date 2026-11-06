@@ -25,7 +25,7 @@ Substitua a porta pelo proxy local correto. Também é possível configurar um p
 
 ```bash
 # Instale o plugin no profile web
-dsh plugin --profile web add dsh-agy-worker
+dsh plugin --profile web add @sqdr2/dsh-agy-worker
 
 # Inicie o DSH Web
 dsh web

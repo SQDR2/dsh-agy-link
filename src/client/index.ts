@@ -550,7 +550,7 @@ function navIconCss(logoUrl: string): string {
 function installSettingsNavIcon(ctx: ClientContext, resolveLabel: () => string): () => void {
 	if (typeof document === 'undefined') return () => {};
 	const tag = document.createElement('style');
-	tag.dataset.plugin = 'dsh-agy-worker';
+	tag.dataset.plugin = '@sqdr2/dsh-agy-worker';
 	tag.dataset.pluginCss = 'dsh-agy-worker/settings-nav-icon';
 	tag.textContent = navIconCss(agyNavLogoUrl());
 	document.head.appendChild(tag);
@@ -2558,7 +2558,7 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 	// When view === "summary", returns null to keep plugin list cards compact and clean.
 	ctx.slots.inject('plugins.bundle.config', () => {
 		const dispose = ctx.slots.register(
-			{ name: 'plugins.bundle.config', key: 'dsh-agy-worker', locale: NS },
+			{ name: 'plugins.bundle.config', key: '@sqdr2/dsh-agy-worker', locale: NS },
 			(ownerProps?: unknown) => {
 				const view = (ownerProps as { view?: string } | undefined)?.view;
 				if (view === 'summary') return null;
@@ -2572,7 +2572,7 @@ h('div', { key: 'agy-body', style: S.quotaBox },
 	// items renders the identical Antigravity management console.
 	ctx.slots.inject('plugins.row.config', () => {
 		const dispose = ctx.slots.register(
-			{ name: 'plugins.row.config', key: 'dsh-agy-worker#agy-worker', locale: NS },
+			{ name: 'plugins.row.config', key: '@sqdr2/dsh-agy-worker#agy-worker', locale: NS },
 			(ownerProps?: unknown) => {
 				const view = (ownerProps as { view?: string } | undefined)?.view;
 				if (view === 'summary') return null;

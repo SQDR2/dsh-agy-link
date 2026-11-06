@@ -101,9 +101,9 @@ test('sidebar contracts: registers sidebar.panellist and main, with NO settings.
 
   const bundleConfig = registeredSlots.find(s => s.name === 'plugins.bundle.config')
   assert.ok(bundleConfig, 'plugins.bundle.config must be preserved')
-  assert.equal(bundleConfig.options.key, 'dsh-agy-worker')
+  assert.equal(bundleConfig.options.key, '@sqdr2/dsh-agy-worker')
 
   const rowConfig = registeredSlots.find(s => s.name === 'plugins.row.config')
   assert.ok(rowConfig, 'plugins.row.config must be preserved')
-  assert.equal(rowConfig.options.key, 'dsh-agy-worker#agy-worker')
+  assert.equal(rowConfig.options.key, '@sqdr2/dsh-agy-worker#agy-worker')
 })

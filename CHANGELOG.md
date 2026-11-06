@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.2 (2026-11-06)
+
+### English
+
+- **The package is now `@sqdr2/dsh-agy-worker`; the unscoped `dsh-agy-worker` is retired.**
+  - npm identity moves into the `@sqdr2` scope. `npm deprecate` is applied to the old unscoped name, pointing users at the scoped package; it cannot be unpublished after 72 hours without npm support, so the deprecation notice is what steers stragglers.
+  - The plugin id stays `agy-worker` — route prefix `/plugins/agy-worker/*` and state directory `~/.dsh/agy-worker` are unchanged, so no data moves. Only the registry identity and the module specifier a profile patch resolves change.
+  - `cordis.patch.yml` `name`, the client bundle registration id, the plugins-page slot keys and `PKG_NAME` follow the package name. Both renames were done before 0.6.2 shipped, so there is no version of the code where the four disagree.
+  - Install command is now `dsh plugin --profile web add @sqdr2/dsh-agy-worker`.
+
+### 中文
+
+- **包名改为 `@sqdr2/dsh-agy-worker`，无 scope 的 `dsh-agy-worker` 停用。**
+  - npm 身份迁入 `@sqdr2` scope。旧的无 scope 名字已用 `npm deprecate` 标记并指向新包；超过 72 小时后无法自行 unpublish（需联系 npm 支持），因此靠弃用提示把用户导向新名字。
+  - 插件 id 仍为 `agy-worker`——路由前缀 `/plugins/agy-worker/*` 与数据目录 `~/.dsh/agy-worker` 均不变，因此没有任何数据迁移。变化的只是 registry 身份，以及 profile patch 解析到的模块名。
+  - `cordis.patch.yml` 的 `name`、客户端 bundle 注册 id、插件页 slot key 与 `PKG_NAME` 全部跟随包名。两处改名都在 0.6.2 发布之前完成，不存在四处标识不一致的版本。
+  - 安装命令变为 `dsh plugin --profile web add @sqdr2/dsh-agy-worker`。
+
 ## 0.6.1 (2026-11-06)
 
 ### English

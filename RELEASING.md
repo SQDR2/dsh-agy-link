@@ -4,7 +4,7 @@
 
 维护者笔记，普通用户不需要看这一页。
 
-`dsh-agy-worker` 由 GitHub Actions 的 `.github/workflows/publish.yml` 发布到 npm。
+`@sqdr2/dsh-agy-worker` 由 GitHub Actions 的 `.github/workflows/publish.yml` 发布到 npm。
 
 ## 认证方式
 
@@ -20,7 +20,7 @@
 | Environment name | 留空 |
 | Permission | publish + stage publish |
 
-查看当前配置：`npm trust list dsh-agy-worker`。
+查看当前配置：`npm trust list @sqdr2/dsh-agy-worker`。
 
 ### 为什么这一步当初只能手工做
 
@@ -29,7 +29,7 @@ OIDC 信任关系按**包**授权，配置入口在包自己的设置页；一�
 而建信任关系的命令需要交互式 2FA 挑战，账号只绑了安全密钥（WebAuthn）时命令行拿不到 6 位验证码——`npm trust` 在非 TTY 下直接 `EOTP` 失败。可行的做法是给它一个伪终端：
 
 ```sh
-script -qec 'npm trust github dsh-agy-worker --file publish.yml --repo SQDR2/dsh-agy-worker --allow-publish --yes' /dev/null
+script -qec 'npm trust github @sqdr2/dsh-agy-worker --file publish.yml --repo SQDR2/dsh-agy-worker --allow-publish --yes' /dev/null
 ```
 
 有 TTY 时 npm 会打印一个网页授权链接，用安全密钥在浏览器里确认即可（`npm login --auth-type=web` 同理）。
@@ -120,19 +120,19 @@ git tag v0.6.0 && git push origin main v0.6.0
 ## 检查一次发布
 
 ```sh
-npm view dsh-agy-worker version dist-tags
-npm view dsh-agy-worker@0.6.0 dist.attestations   # 有值说明出自 CI
+npm view @sqdr2/dsh-agy-worker version dist-tags
+npm view @sqdr2/dsh-agy-worker@0.6.2 dist.attestations   # 有值说明出自 CI
 ```
 
 校验产物本身而不只是元数据：
 
 ```sh
-npm install dsh-agy-worker
-node -e "console.log(require('dsh-agy-worker/package.json').version)"
-grep -n "name: 'dsh-agy-worker'" node_modules/dsh-agy-worker/cordis.patch.yml
+npm install @sqdr2/dsh-agy-worker
+node -e "console.log(require('@sqdr2/dsh-agy-worker/package.json').version)"
+grep -n "name: 'dsh-agy-worker'" node_modules/@sqdr2/dsh-agy-worker/cordis.patch.yml
 ```
 
-插件 id 是 `agy-worker`，包名是 `dsh-agy-worker`，两者刻意不同：前者决定路由前缀 `/plugins/agy-worker/*` 与数据目录 `~/.dsh/agy-worker`，后者是 npm 上的名字。`cordis.patch.yml` 里的 `name` 必须与包名一致。
+插件 id 是 `agy-worker`，npm 包名是 `@sqdr2/dsh-agy-worker`，两者刻意不同：前者决定路由前缀 `/plugins/agy-worker/*` 与数据目录 `~/.dsh/agy-worker`，后者是 npm 上的名字。`cordis.patch.yml` 里的 `name` 必须与包名一致。
 
 ## 发布失败对照表
 
