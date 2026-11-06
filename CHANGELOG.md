@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.1 (2026-11-06)
+
+### English
+
+- **npm publishing now authenticates with Trusted Publishing (OIDC); no release token exists.**
+  - `dsh-agy-worker` is registered on npm as a trusted publisher for `SQDR2/dsh-agy-worker` + `publish.yml`, so `.github/workflows/publish.yml` authenticates with the short-lived OIDC token GitHub mints per run instead of a stored `NPM_TOKEN` secret. The secret is gone; a published version carries a provenance attestation naming the commit it was built from.
+  - The publish step now verifies the OIDC token endpoint is present before packing, so a missing `id-token: write` permission fails immediately rather than as an opaque 401 after the full build and test run.
+  - `RELEASING.md` records the trust configuration id, why the first publish of a new package name can only be done by hand, and the PTY workaround needed to run `npm trust` on an account that only has a WebAuthn security key (non-TTY runs fail with `EOTP`).
+  - `AGENTS.md` listed a stale test count (491); the suite is 604 cases.
+
+### 中文
+
+- **npm 发布改用 Trusted Publishing（OIDC），仓库中不再存在发布 token。**
+  - `dsh-agy-worker` 已在 npm 上登记信任关系（`SQDR2/dsh-agy-worker` + `publish.yml`），因此 `.github/workflows/publish.yml` 改用 GitHub 为每次运行签发的短期 OIDC 令牌认证，不再依赖存储的 `NPM_TOKEN` secret。secret 已移除；发布产物带有 provenance attestation，可指回构建它的 commit。
+  - 发布步骤现在会在打包前校验 OIDC 令牌端点是否存在，缺少 `id-token: write` 权限时会立即失败，而不是在完整构建与测试跑完后才以一个难以理解的 401 收场。
+  - `RELEASING.md` 记录了信任配置 id、为什么新包名的首次发布只能手工完成，以及账号仅绑定 WebAuthn 安全密钥时运行 `npm trust` 所需的伪终端变通手段（非 TTY 环境下会以 `EOTP` 失败）。
+  - `AGENTS.md` 里的用例数已过期（写的是 491），实际为 604 项。
+
 ## 0.6.0 (2026-11-05)
 
 ### English
