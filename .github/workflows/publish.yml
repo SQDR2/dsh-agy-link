@@ -1,18 +1,16 @@
 name: Publish
 
 # Push a tag like v0.6.0 (must match the package.json version) to publish.
-# Auth is npm Trusted Publishing (OIDC) - no NPM_TOKEN is needed or used.
+# Pushing to main never publishes; only a v* tag or a manual run does.
 # Manual run with dry_run=true installs, builds, tests and packs only (nothing is published).
 # A version that is already on npm is skipped, so re-running a tag is safe.
 #
-# The package name must already exist on npm before this workflow can publish:
-# a trusted publisher is configured on the package's own settings page, which a
-# name that has never been published does not have. For the very first publish
-# of a new name, publish once by hand with a granular token, then add the
-# trusted publisher (owner SQDR2, repository dsh-agy-worker, workflow
-# publish.yml, permission "allow npm publish") and let tags do the rest. A
-# trusted publisher must complete its first publish within 2 days or it expires
-# unvalidated. Full maintainer notes: RELEASING.md.
+# Auth: the NPM_TOKEN repository secret (granular token, packages: all,
+# read+write, bypass 2FA). Trusted Publishing over OIDC is the intended end
+# state -- `permissions: id-token: write` is already granted -- but it can only
+# be configured on the package's npm settings page in a browser, and this
+# account has no authenticator app, so `npm trust` fails with EOTP.
+# See RELEASING.md for both the current setup and the switch-over steps.
 on:
   push:
     tags:
