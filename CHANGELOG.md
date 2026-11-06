@@ -5,7 +5,7 @@
 ### English
 
 - **The package is now `@sqdr2/dsh-agy-worker`; the unscoped `dsh-agy-worker` is retired.**
-  - npm identity moves into the `@sqdr2` scope. `npm deprecate` is applied to the old unscoped name, pointing users at the scoped package; it cannot be unpublished after 72 hours without npm support, so the deprecation notice is what steers stragglers.
+  - npm identity moves into the `@sqdr2` scope. The old unscoped name was unpublished outright while still inside npm's 72-hour window: its versions and dist-tags are gone and installing `dsh-agy-worker` now returns 404. npm keeps a stub record for the name so it cannot be squatted.
   - The plugin id stays `agy-worker` — route prefix `/plugins/agy-worker/*` and state directory `~/.dsh/agy-worker` are unchanged, so no data moves. Only the registry identity and the module specifier a profile patch resolves change.
   - `cordis.patch.yml` `name`, the client bundle registration id, the plugins-page slot keys and `PKG_NAME` follow the package name. Both renames were done before 0.6.2 shipped, so there is no version of the code where the four disagree.
   - Install command is now `dsh plugin --profile web add @sqdr2/dsh-agy-worker`.
@@ -13,7 +13,7 @@
 ### 中文
 
 - **包名改为 `@sqdr2/dsh-agy-worker`，无 scope 的 `dsh-agy-worker` 停用。**
-  - npm 身份迁入 `@sqdr2` scope。旧的无 scope 名字已用 `npm deprecate` 标记并指向新包；超过 72 小时后无法自行 unpublish（需联系 npm 支持），因此靠弃用提示把用户导向新名字。
+  - npm 身份迁入 `@sqdr2` scope。旧的无 scope 名字在 npm 的 72 小时窗口内被整体 unpublish：版本与 dist-tag 全部消失，安装 `dsh-agy-worker` 现在返回 404。npm 会为该名字保留一条占位记录，防止被他人抢注。
   - 插件 id 仍为 `agy-worker`——路由前缀 `/plugins/agy-worker/*` 与数据目录 `~/.dsh/agy-worker` 均不变，因此没有任何数据迁移。变化的只是 registry 身份，以及 profile patch 解析到的模块名。
   - `cordis.patch.yml` 的 `name`、客户端 bundle 注册 id、插件页 slot key 与 `PKG_NAME` 全部跟随包名。两处改名都在 0.6.2 发布之前完成，不存在四处标识不一致的版本。
   - 安装命令变为 `dsh plugin --profile web add @sqdr2/dsh-agy-worker`。
@@ -41,7 +41,7 @@
 ### English
 
 - **First npm release of `dsh-agy-worker`, with tag-driven OIDC publishing.**
-  - The package name is now claimed on the public registry, so `dsh plugin --profile web add dsh-agy-worker` works without cloning the repository. npm answers the first publish with `202` and briefly serves a `0.0.0-stage` stub while the tarball is processed; the real version replaces it a few minutes later, so do not read the immediate `E404` as a failure.
+  - The package name is now claimed on the public registry, so `dsh plugin --profile web add dsh-agy-worker` works without cloning the repository (superseded in 0.6.2, when the unscoped name was unpublished). npm answers the first publish with `202` and briefly serves a `0.0.0-stage` stub while the tarball is processed; the real version replaces it a few minutes later, so do not read the immediate `E404` as a failure.
   - The registry identity matches the plugin id, `cordis.patch.yml` `name` and the client bundle registration id — all four stay `dsh-agy-worker`. The version starts at `0.6.0` rather than continuing the `0.4.x` line: upstream `dsh-agy-link` is already published up to `0.5.6`, and shipping under `0.4.x` would look like a downgrade to anyone coming from upstream.
   - `.github/workflows/publish.yml` was rewritten. It now triggers on `push: tags: ['v*']` and `workflow_dispatch` (with a `dry_run` input) instead of `release: published`; it authenticates through npm Trusted Publishing (OIDC, `permissions: id-token: write`) instead of a long-lived `NPM_TOKEN` secret; it drops the `environment: npm` requirement; it refuses to publish when the pushed tag disagrees with `package.json`; and it skips a version that is already on the registry, so re-running a tag is safe. `dist/` stays gitignored and is rebuilt by `prepack` inside the workflow.
   - `README.md` and `docs/README.en.md` now list npm as the primary install path, with GitHub and local-clone installs kept as fallbacks.
@@ -50,7 +50,7 @@
 ### 中文
 
 - **`dsh-agy-worker` 首次发布到 npm，并改为 tag 驱动的 OIDC 发布。**
-  - 包名已在公共 registry 上占位，`dsh plugin --profile web add dsh-agy-worker` 无需再 clone 仓库。npm 对首次发布会先回 `202` 并短暂返回一个 `0.0.0-stage` 占位版本，等 tarball 处理完成后真正的版本才替换它——所以发布后立刻查到的 `E404` 不代表失败，几分钟后再查即可。
+  - 包名已在公共 registry 上占位，`dsh plugin --profile web add dsh-agy-worker` 无需再 clone 仓库（已在 0.6.2 被取代：该无 scope 名字已 unpublish）。npm 对首次发布会先回 `202` 并短暂返回一个 `0.0.0-stage` 占位版本，等 tarball 处理完成后真正的版本才替换它——所以发布后立刻查到的 `E404` 不代表失败，几分钟后再查即可。
   - registry 身份与插件 id、`cordis.patch.yml` 的 `name`、客户端 bundle 注册 id 四处保持一致，均为 `dsh-agy-worker`。版本号从 `0.6.0` 起跳而非延续 `0.4.x`：上游 `dsh-agy-link` 已发到 `0.5.6`，若仍按 `0.4.x` 首发，从上游迁来的用户会看到一次「版本降级」。
   - 重写 `.github/workflows/publish.yml`：触发条件由 `release: published` 改为 `push: tags: ['v*']` 与 `workflow_dispatch`（带 `dry_run` 开关）；认证方式由长期 `NPM_TOKEN` secret 改为 npm Trusted Publishing（OIDC，`permissions: id-token: write`）；去掉 `environment: npm` 的额外约束；新增 tag 与 `package.json` 版本一致性校验；对已存在于 registry 的版本直接跳过，因此重跑 tag 是安全的。`dist/` 仍不入库，由 workflow 内的 `prepack` 重新构建。
   - `README.md` 与 `docs/README.en.md` 把 npm 安装列为首选路径，GitHub 与本地 clone 安装降为备选。

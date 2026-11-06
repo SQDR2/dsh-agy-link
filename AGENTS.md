@@ -45,7 +45,7 @@
 
 ## 🔀 与上游的关系（维护者必读）
 
-本仓库是 `amlyczz/dsh-agy-link` 的 fork，独立发布线：包名 `dsh-agy-worker`、内部 id `agy-worker`、路由 `/plugins/agy-worker/*`、数据目录 `~/.dsh/agy-worker`（旧的 `~/.dsh/agy-link` 首次启动自动迁移）。
+本仓库是 `amlyczz/dsh-agy-link` 的 fork，独立发布线：npm 包名 `@sqdr2/dsh-agy-worker`、内部 id `agy-worker`、路由 `/plugins/agy-worker/*`、数据目录 `~/.dsh/agy-worker`（旧的 `~/.dsh/agy-link` 首次启动自动迁移）。
 
 - `upstream` remote 指向上游，`origin` 指向本 fork（`SQDR2/dsh-agy-worker`）。
 - 本 fork 的实质增量是「由调用方驱动的 Worker」这条契约：`/tools` 按调用方 agent scope 列举、`mcpBridge` 默认开启、`agy_tool` 作为回传通道、`permissionMode` 必须 `skip`。详见 `docs/MCP-BRIDGE-SETUP.md`。
