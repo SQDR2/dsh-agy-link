@@ -16,7 +16,7 @@
    - **STOP and wait for the user's explicit command** (e.g. "发布", "可以发布", "release") before creating any release or publishing package.
 
 3. **How a Release Ships (发版通道)**
-   - Once the user has explicitly approved, the release itself goes through `.github/workflows/publish.yml`: push a `v*` tag that matches `package.json`, and CI publishes. Pushing to `main` never publishes. CI currently authenticates with the `NPM_TOKEN` repository secret; Trusted Publishing (OIDC) is the intended end state but needs a browser-only setup step first.
+   - Once the user has explicitly approved, the release itself goes through `.github/workflows/publish.yml`: push a `v*` tag that matches `package.json`, and CI publishes. Pushing to `main` never publishes. CI authenticates via npm Trusted Publishing (OIDC) — there is no long-lived token. For the very first publish of a brand-new package name, do it by hand once (a Trusted Publisher only exists once the name does), then add the trusted publisher and let tags take over.
    - Do not run `npm publish` by hand except for the **very first** publish of a brand-new package name (npm requires the name to exist before a Trusted Publisher can be configured). Full maintainer notes: `RELEASING.md`.
 
 ---

@@ -5,12 +5,11 @@ name: Publish
 # Manual run with dry_run=true installs, builds, tests and packs only (nothing is published).
 # A version that is already on npm is skipped, so re-running a tag is safe.
 #
-# Auth: the NPM_TOKEN repository secret (granular token, packages: all,
-# read+write, bypass 2FA). Trusted Publishing over OIDC is the intended end
-# state -- `permissions: id-token: write` is already granted -- but it can only
-# be configured on the package's npm settings page in a browser, and this
-# account has no authenticator app, so `npm trust` fails with EOTP.
-# See RELEASING.md for both the current setup and the switch-over steps.
+# Auth: npm Trusted Publishing over OIDC. No long-lived token exists anywhere.
+# Requires `permissions: id-token: write` below and a trusted publisher on the
+# package's npm settings page pointing at this repository + publish.yml.
+# A published version gets a provenance attestation recording the commit it was
+# built from. See RELEASING.md.
 on:
   push:
     tags:
@@ -44,7 +43,6 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
-          always-auth: true
 
       - name: Check tag matches package.json version
         if: startsWith(github.ref, 'refs/tags/v')
@@ -63,21 +61,12 @@ jobs:
       - run: npm test
 
       # dist/ is gitignored and rebuilt by prepack, so npm publish builds it again.
-      #
-      # Auth: NPM_TOKEN is a granular token (packages: all, read+write, bypass
-      # 2FA) stored as a repository secret. It is the working path today.
-      # Preferred end state is Trusted Publishing (OIDC, no token at all): add a
-      # trusted publisher for this repo + publish.yml on the package's npm
-      # settings page, then delete this `env:` block and the NPM_TOKEN secret.
-      # `permissions: id-token: write` above is already in place for that.
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm install -g npm@latest
-          # Fail fast and legibly if the token is missing, expired or revoked,
-          # instead of surfacing it as a confusing 401 from npm publish.
-          npm whoami
+          # Fail fast and legibly if OIDC was not granted, instead of surfacing
+          # it as an opaque 404/ENEEDAUTH from npm publish after a full build.
+          test -n "$ACTIONS_ID_TOKEN_REQUEST_URL" || { echo "no OIDC token endpoint - is id-token: write set?"; exit 1; }
           NAME=$(node -p "require('./package.json').name")
           VER=$(node -p "require('./package.json').version")
           # A scoped name must be percent-encoded in the registry URL: @scope%2fname

@@ -6,16 +6,11 @@
 
 `dsh-agy-worker` 由 GitHub Actions 的 `.github/workflows/publish.yml` 发布到 npm。
 
-## 当前的认证方式
+## 认证方式
 
-现在走的是**仓库 secret `NPM_TOKEN`**（一个 granular token：packages 选 All packages、Read and write、勾选 Bypass 2FA）。这是目前唯一可用的自动化路径。
+本包走 **Trusted Publishing（OIDC）**：仓库里不存在任何长期有效的发布 token，workflow 用 GitHub Actions 签发的短期 OIDC 令牌向 npm 证明「这次发布确实来自 `SQDR2/dsh-agy-worker` 的 `publish.yml`」。发布产物附带 provenance attestation，可以指回构建它的那个 commit。
 
-**目标状态是 Trusted Publishing（OIDC，完全不需要 token）**，但它的配置只能在包的 npm 设置页上用浏览器完成，而命令行建不了：
-
-- `npm trust github` 会要求交互式 OTP，而账号只有安全密钥（WebAuthn）时拿不到 6 位验证码，命令直接失败。
-- 直接调 registry 的 `/-/package/<name>/trust` 需要精确的请求体结构，且同样要过 2FA 挑战。
-
-所以等你有时间时，请到 https://www.npmjs.com/package/dsh-agy-worker/access 添加：
+信任关系（2026-11-06 创建，`id: e35cb700-f2ae-4929-a15e-ebb2cc88b389`）：
 
 | 字段 | 值 |
 | --- | --- |
@@ -23,9 +18,23 @@
 | Repository | `SQDR2/dsh-agy-worker` |
 | Workflow | `publish.yml` |
 | Environment name | 留空 |
-| Permission | allow npm publish |
+| Permission | publish + stage publish |
 
-配置好后，把 `publish.yml` 里 Publish 步骤的 `env: NODE_AUTH_TOKEN` 段删掉，并删除仓库 secret `NPM_TOKEN`——`permissions: id-token: write` 已经就位。
+查看当前配置：`npm trust list dsh-agy-worker`。
+
+### 为什么这一步当初只能手工做
+
+OIDC 信任关系按**包**授权，配置入口在包自己的设置页；一个新包名在首次发布之前没有这个页面。所以顺序不可颠倒：先用 granular token 手工发一次（创建包名），再建信任关系。
+
+而建信任关系的命令需要交互式 2FA 挑战，账号只绑了安全密钥（WebAuthn）时命令行拿不到 6 位验证码——`npm trust` 在非 TTY 下直接 `EOTP` 失败。可行的做法是给它一个伪终端：
+
+```sh
+script -qec 'npm trust github dsh-agy-worker --file publish.yml --repo SQDR2/dsh-agy-worker --allow-publish --yes' /dev/null
+```
+
+有 TTY 时 npm 会打印一个网页授权链接，用安全密钥在浏览器里确认即可（`npm login --auth-type=web` 同理）。
+
+> ⚠️ 新建的信任关系只有在**2 天内**完成首次成功发布才会转为 `Status: Valid`；过期未验证会作废，且不能编辑，只能删除重建。
 
 本文记录一次性配置、每次发版的循环，以及失败时的排查表。
 
