@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.3 (2026-11-07)
+
+### English
+
+- **Fix(client): stop the app from crashing on boot — the client bundle registers under the package name again, and locale setup tolerates a language the Host already ships.**
+  - The 0.6.2 rename changed the package name and `cordis.patch.yml` but left the client bundle banner registering as `dsh-agy-worker`. The Host derives a client module's id from `package.json` `name`, so the row stayed unregistered for `@sqdr2/dsh-agy-worker`; the module system replayed the script on the row's own URL, and the replay threw `duplicate factory registration for "dsh-agy-worker" (bundle executed twice without invalidate?)`. The web shell rendered **Failed to load plugins** and the desktop app recorded a fatal web-boot crash. The bundle now registers as `@sqdr2/dsh-agy-worker`, with a test pinning it to `package.json`.
+  - Language registration is additive: DSH 0.2.2 ships its own `ja`/`es`/`fr`/`de`/`ru`/`pt` catalog, and the unconditional `addLanguage({ id: 'es' })` threw `locale "es" is already registered`, rejecting the entry the same way. Only missing languages are added now, dictionary registration is idempotent, and no locale bookkeeping can abort activation.
+
+### 中文
+
+- **修复(client)：应用不再启动崩溃——客户端 bundle 恢复按包名注册，语言注册也不再撞车宿主自带语言。**
+  - 0.6.2 改名只改了包名和 `cordis.patch.yml`，客户端 bundle 的 banner 仍以 `dsh-agy-worker` 注册。宿主用 `package.json` 的 `name` 推导客户端模块 id，于是 `@sqdr2/dsh-agy-worker` 那一行始终取不到注册，模块系统在自己的 URL 上重放脚本，重放抛出 `duplicate factory registration for "dsh-agy-worker" (bundle executed twice without invalidate?)`。Web 外壳显示 **Failed to load plugins**，桌面端记为致命 web-boot 崩溃。现在 bundle 以 `@sqdr2/dsh-agy-worker` 注册，并加测试把它钉在 `package.json` 上。
+  - 语言注册改为增量：DSH 0.2.2 自带 `ja`/`es`/`fr`/`de`/`ru`/`pt` 目录，此前无条件 `addLanguage({ id: 'es' })` 会抛 `locale "es" is already registered`，同样让条目激活失败。现在只补缺失语言，词典注册幂等，任何 locale 记账都不会再中断激活。
+
+**Full Changelog**: https://github.com/SQDR2/dsh-agy-worker/compare/v0.6.2...v0.6.3
+
 ## 0.6.2 (2026-11-06)
 
 ### English
