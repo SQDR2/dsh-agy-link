@@ -1338,14 +1338,45 @@ export function apply(ctx: ClientContext): void {
 	}, 'agy-worker: status polling');
 	// locale is declared in inject — cordis guarantees ctx.locale (issue #24).
 	const locale = ctx.locale;
+	// Host DSH 0.2.2 ships its own es/fr/de/ja/ru/pt catalog. addLanguage
+	// throws on an id the catalog already owns, and a throw here rejects the
+	// client entry — the web shell then reports "web boot: 1 entry did not
+	// activate" and the desktop app treats it as a fatal startup crash. Only
+	// contribute what is missing, and stay idempotent so a reload of a half-
+	// applied attempt (language or dictionaries left behind) repairs itself
+	// instead of failing forever.
+	const addLanguageIfMissing = (language: { id: string; label: string; fallback: string }): (() => void) => {
+		try {
+			const wanted = language.id.toLowerCase();
+			// localeList() is runtime-public but typed private; the public
+			// snapshot exposes the same catalog and works on both host lines.
+			const snapshot = (locale as unknown as { getSnapshot?: () => { locales?: readonly { id: string }[] } }).getSnapshot?.();
+			const existing = snapshot?.locales?.some((entry) => entry.id.toLowerCase() === wanted) ?? false;
+			if (existing) return () => {};
+			return locale.addLanguage(language);
+		} catch {
+			// A language another plugin/host already installed is not ours to
+			// remove, and its dictionaries still register below.
+			return () => {};
+		}
+	};
+	const registerDictionary = (language: string, dictionary: Record<string, string>): (() => void) => {
+		try {
+			// Untyped single-locale form: 'agy-worker' is not in the host LocaleNamespaceMap merge table.
+			return locale.register(NS, language, dictionary);
+		} catch {
+			// Same idempotence contract as above: a leftover dictionary from an
+			// interrupted load is equivalent, so keeping it is safe.
+			return () => {};
+		}
+	};
 	ctx.effect(() => {
-		const disposePtBR = locale.addLanguage({ id: 'pt-BR', label: 'Português (Brasil)', fallback: 'en' });
-		const disposeEs = locale.addLanguage({ id: 'es', label: 'Español', fallback: 'en' });
-		// Untyped single-locale form: 'agy-worker' is not in the host LocaleNamespaceMap merge table.
-		const disposeZh = locale.register(NS, 'zh', zh);
-		const disposeEn = locale.register(NS, 'en', en);
-		const disposePtBRDictionary = locale.register(NS, 'pt-BR', ptBR);
-		const disposeEsDictionary = locale.register(NS, 'es', es);
+		const disposePtBR = addLanguageIfMissing({ id: 'pt-BR', label: 'Português (Brasil)', fallback: 'en' });
+		const disposeEs = addLanguageIfMissing({ id: 'es', label: 'Español', fallback: 'en' });
+		const disposeZh = registerDictionary('zh', zh);
+		const disposeEn = registerDictionary('en', en);
+		const disposePtBRDictionary = registerDictionary('pt-BR', ptBR);
+		const disposeEsDictionary = registerDictionary('es', es);
 		return () => { disposeEsDictionary(); disposePtBRDictionary(); disposeEn(); disposeZh(); disposeEs(); disposePtBR(); };
 	}, 'agy-worker: locale dictionaries');
 	const useAgyTranslation = () => {
