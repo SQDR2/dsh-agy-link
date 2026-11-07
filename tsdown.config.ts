@@ -59,6 +59,11 @@ export default defineConfig([
     external: [/^@deepseek-ai\//, "react", "react-dom", "react/jsx-runtime"],
     outputOptions: {
       entryFileNames: "client.js",
+      // The registration id must equal the package name: the Host derives the
+      // client module id from `package.json` name. A bundle registering under a
+      // different id leaves its row unregistered, the module system replays the
+      // script on that row's own URL, and the replay dies with "duplicate
+      // factory registration" — a fatal web boot. Keep the two in lockstep.
       banner: `window.__ModuleLoader__.load({ id: "@sqdr2/dsh-agy-worker", factory: (require) => {`,
       intro: "var module = { exports: {} }; var exports = module.exports;",
       footer: "return module.exports; } });",

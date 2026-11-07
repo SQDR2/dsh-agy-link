@@ -95,6 +95,62 @@ test('native-contract locale lifecycle registers, publishes switches, falls back
   assert.equal(dictionaries.size, 0)
 })
 
+test('locale setup tolerates a host catalog that already ships a language', () => {
+  // DSH 0.2.2's locale plugin registers ja/es/fr/de/ru/pt itself; addLanguage
+  // throws on a duplicate id and that throw used to reject the whole client
+  // entry ("web boot: 1 entry did not activate" -> desktop fatal crash).
+  const plugin = loadClient()
+  const hostLanguages = ['zh', 'en', 'es', 'fr', 'de', 'ja', 'ru', 'pt']
+  const catalog = new Map(hostLanguages.map(id => [id, { id }]))
+  const dictionaries = new Map<string, Record<string, string>>()
+  const cleanup: Array<() => void> = []
+  const locale = {
+    getSnapshot() { return { locales: [...catalog.values()] } },
+    addLanguage(language: { id: string; label: string; fallback: string }) {
+      if (catalog.has(language.id)) throw new Error(`locale "${language.id}" is already registered`)
+      catalog.set(language.id, language)
+      return () => { if (catalog.get(language.id) === language) catalog.delete(language.id) }
+    },
+    register(namespace: string, language: string, dictionary: Record<string, string>) {
+      const key = `${namespace}/${language}`
+      // Same guard the real runtime applies, so a leftover dictionary from an
+      // interrupted load would fail a reload unless the plugin stays additive.
+      if (dictionaries.has(key)) throw new Error(`locale namespace "${namespace}" already has locale "${language}"`)
+      dictionaries.set(key, dictionary)
+      return () => { if (dictionaries.get(key) === dictionary) dictionaries.delete(key) }
+    },
+    bind() { return (key: string) => key },
+    subscribe() { return () => {} },
+  }
+  const ctx = {
+    locale,
+    effect(callback: () => (() => void)) { cleanup.push(callback()) },
+    slots: {
+      inject(_name: string, callback: () => (() => void)) { cleanup.push(callback()) },
+      register() { return () => {} },
+    },
+  }
+  assert.doesNotThrow(() => plugin.apply(ctx))
+  // Existing "es" is adopted, only the missing Brazilian Portuguese is added.
+  assert.deepEqual([...catalog.keys()], [...hostLanguages, 'pt-BR'])
+  assert.equal(dictionaries.size, 4)
+  // Reloading before the previous effects are disposed must also stay quiet.
+  assert.doesNotThrow(() => plugin.apply(ctx))
+  assert.deepEqual([...catalog.keys()], [...hostLanguages, 'pt-BR'])
+  assert.equal(dictionaries.size, 4)
+})
+
+test('client bundle registers under the package name the Host resolves', () => {
+  // The Host derives a client module's id from package.json `name`. A bundle
+  // registering under any other id stays unregistered for its row, the module
+  // system replays the script on the row URL, and the replay throws
+  // "duplicate factory registration" — a fatal web boot for the whole app.
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { name: string }
+  const registered = /__ModuleLoader__\.load\(\{\s*id:\s*"([^"]+)"/.exec(source)
+  assert.ok(registered, 'client bundle must call __ModuleLoader__.load({ id, factory })')
+  assert.equal(registered![1], pkg.name)
+})
+
 test('mounted panel subscribes to locale revisions and exposes localized accessible names', () => {
   const effects: Array<() => void | (() => void)> = []
   let rerenders = 0
